@@ -34,7 +34,12 @@ export default defineConfig({
         imports: ['vue', 'vue-router'],
       }),
       Components({
-        resolvers: [AntDesignVueResolver()],
+        resolvers: [
+          AntDesignVueResolver({
+            importStyle: false, // 不自动导入样式，使用全局导入
+            resolveIcons: true, // 自动导入图标
+          }),
+        ],
       }),
     ],
     server: {

@@ -1,9 +1,21 @@
 import { ElectronAPI } from '@electron-toolkit/preload';
 
+interface Settings {
+  searchIndexPath: string;
+}
+
 interface API {
   minimize: () => void;
   maximize: () => void;
   close: () => void;
+  settings: {
+    get: (key: string) => Promise<any>;
+    getAll: () => Promise<Settings>;
+    set: (key: string, value: any) => Promise<boolean>;
+  };
+  dialog: {
+    selectDirectory: () => Promise<string | null>;
+  };
 }
 
 interface ipcRenderer {

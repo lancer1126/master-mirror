@@ -2,7 +2,14 @@ import { electronApp, is, optimizer } from '@electron-toolkit/utils';
 import { app, BrowserWindow, shell } from 'electron';
 import { join } from 'path';
 
+import { configRelateWindow,registerConfigHandlers } from './modules/config';
+
 let mainWindow: BrowserWindow | null = null;
+
+/**
+ * 设置应用名称
+ */
+app.setName('MasterMirror');
 
 /**
  * 创建主窗口
@@ -15,12 +22,15 @@ function createWindow(): void {
     show: false,
     autoHideMenuBar: true, // 隐藏菜单栏
     webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
+      preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,
       contextIsolation: true, // 启用上下文隔离
       nodeIntegration: false, // 禁用 Node 集成（安全）
     },
   });
+
+  // 设置主窗口引用到配置模块
+  configRelateWindow(mainWindow);
 
   // 窗口准备好后显示
   mainWindow.on('ready-to-show', () => {
@@ -52,6 +62,9 @@ if (isSingleInstance) {
   app.whenReady().then(() => {
     // 设置应用 ID（Windows）
     electronApp.setAppUserModelId('fun.lance.mastermirror');
+
+    // 注册配置相关的 IPC 处理程序
+    registerConfigHandlers();
 
     // 开发环境下，F12 打开开发者工具
     app.on('browser-window-created', (_, window) => {

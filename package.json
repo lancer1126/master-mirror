@@ -10,6 +10,7 @@
     "build": "electron-vite build"
   },
   "dependencies": {
+    "@ant-design/icons-vue": "^7.0.1",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@vueuse/core": "^11.3.0",
@@ -58,7 +59,7 @@
   },
   "build": {
     "appId": "fun.lance.mastermirror",
-    "productName": "Master Mirror"
+    "productName": "MasterMirror"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

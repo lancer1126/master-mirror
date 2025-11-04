@@ -9,6 +9,16 @@ const api = {
   minimize: () => ipcRenderer.send('minimize-window'),
   maximize: () => ipcRenderer.send('maximize-window'),
   close: () => ipcRenderer.send('close-window'),
+  // 设置相关 API
+  settings: {
+    get: (key: string) => ipcRenderer.invoke('settings:get', key),
+    getAll: () => ipcRenderer.invoke('settings:getAll'),
+    set: (key: string, value: any) => ipcRenderer.invoke('settings:set', key, value),
+  },
+  // 对话框 API
+  dialog: {
+    selectDirectory: () => ipcRenderer.invoke('dialog:selectDirectory'),
+  },
 };
 
 /**
