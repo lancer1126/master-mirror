@@ -201,7 +201,6 @@ class MeilisearchService {
       this.process.once('exit', () => {
         this.isRunning = false;
         this.process = null;
-        console.log('[Meilisearch] 服务已停止');
         resolve();
       });
 
@@ -355,7 +354,6 @@ export function setupMeilisearchCleanup(): void {
       return;
     }
 
-    console.log('[Meilisearch] 准备清理...');
     event.preventDefault(); // 阻止立即退出，等待清理完成
     isQuitting = true;
 

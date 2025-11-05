@@ -78,6 +78,9 @@ interface API {
     selectDirectory: () => Promise<string | null>;
     selectMeilisearchFile: () => Promise<string | null>;
   };
+  shell: {
+    showItemInFolder: (filePath: string) => Promise<{ success: boolean; error?: string }>;
+  };
   upload: {
     files: (filePaths: string[]) => Promise<UploadResult>;
     getSupportedTypes: () => Promise<{ success: boolean; data?: string[]; error?: string }>;

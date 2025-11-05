@@ -20,6 +20,10 @@ const api = {
     selectDirectory: () => ipcRenderer.invoke('dialog:selectDirectory'),
     selectMeilisearchFile: () => ipcRenderer.invoke('dialog:selectMeilisearchFile'),
   },
+  // Shell API
+  shell: {
+    showItemInFolder: (filePath: string) => ipcRenderer.invoke('shell:showItemInFolder', filePath),
+  },
   // 文件上传 API
   upload: {
     files: (filePaths: string[]) => ipcRenderer.invoke('file:upload', filePaths),

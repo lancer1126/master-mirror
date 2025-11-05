@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import Store from 'electron-store';
 import { existsSync } from 'fs';
 import { join } from 'path';
@@ -141,6 +141,17 @@ export function registerConfigHandlers(): void {
       return result.filePaths[0];
     }
     return null;
+  });
+
+  // 在文件管理器中显示文件
+  ipcMain.handle('shell:showItemInFolder', async (_event, filePath: string) => {
+    try {
+      shell.showItemInFolder(filePath);
+      return { success: true };
+    } catch (error: any) {
+      console.error('打开文件夹失败:', error);
+      return { success: false, error: error.message };
+    }
   });
 }
 

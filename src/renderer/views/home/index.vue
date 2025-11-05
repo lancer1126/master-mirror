@@ -26,43 +26,34 @@
         <a-spin size="large" tip="搜索中..." />
       </div>
 
-      <div v-else-if="searchResults.length > 0" class="results-content">
+      <div v-else-if="groupedFiles.length > 0" class="results-content">
         <!-- 搜索信息 -->
         <div class="results-header">
           <span class="results-count">
-            找到 {{ totalResults }} 个结果，用时 {{ searchTime }}ms
+            找到 {{ groupedFiles.length }} 个文件，共 {{ totalResults }} 处匹配，用时
+            {{ searchTime }}ms
           </span>
         </div>
 
-        <!-- 结果列表 -->
+        <!-- 文件列表（按文件分组） -->
         <div class="results-list">
-          <div
-            v-for="item in searchResults"
-            :key="item.id"
-            class="result-item"
-            @click="handleOpenFile(item)"
-          >
-            <div class="result-header">
-              <span class="file-name" v-html="getFormattedFileName(item)"></span>
-              <span v-if="item.pageRange" class="page-range">{{ item.pageRange }}</span>
-            </div>
-            <div class="result-content" v-html="getFormattedContent(item)"></div>
-            <div class="result-footer">
-              <span class="file-type">{{ item.fileType }}</span>
-              <span class="divider">•</span>
-              <span class="file-path">{{ item.filePath }}</span>
-            </div>
-          </div>
+          <search-result-item
+            v-for="file in groupedFiles"
+            :key="file.fileName"
+            :file="file"
+            @click="handleOpenFileDetail"
+            @show-in-folder="handleShowInFolder"
+          />
         </div>
 
         <!-- 分页 -->
-        <div class="pagination-wrapper">
+        <div v-if="totalPages > 1" class="pagination-wrapper">
           <a-pagination
             v-model:current="currentPage"
-            v-model:page-size="pageSize"
-            :total="totalResults"
+            :page-size="pageSize"
+            :total="totalFileCount"
             :show-size-changer="false"
-            :show-total="(total) => `共 ${total} 个结果`"
+            :show-total="(total) => `共 ${total} 个文件`"
             @change="handlePageChange"
           />
         </div>
@@ -70,12 +61,25 @@
 
       <a-empty v-else description="未找到相关结果" class="empty-state" />
     </div>
+
+    <!-- 搜索详情弹窗 -->
+    <search-detail-modal
+      v-model:open="detailModalVisible"
+      :file-name="selectedFile?.fileName || ''"
+      :file-path="selectedFile?.filePath || ''"
+      :matches="selectedFile?.matches || []"
+      :total-pages="selectedFile?.totalPages"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { SearchOutlined } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
+import { computed } from 'vue';
+
+import SearchDetailModal from '@/components/SearchDetailModal.vue';
+import SearchResultItem from '@/components/SearchResultItem.vue';
 
 interface SearchHit {
   id: string;
@@ -96,19 +100,44 @@ interface SearchHit {
   _matchesPosition?: Record<string, Array<{ start: number; length: number }>>;
 }
 
+interface GroupedFile {
+  fileName: string;
+  filePath: string;
+  fileType: string;
+  totalPages?: number;
+  matchCount: number;
+  matches: SearchHit[];
+}
+
 const searchQuery = ref('');
 const isHovered = ref(false);
 const hasSearched = ref(false);
 const searching = ref(false);
 
-// 搜索结果
+// 搜索结果（原始chunks）
 const searchResults = ref<SearchHit[]>([]);
 const totalResults = ref(0);
 const searchTime = ref(0);
 
+// 文件分组结果
+const allGroupedFiles = ref<GroupedFile[]>([]);
+const totalFileCount = ref(0);
+
 // 分页
 const currentPage = ref(1);
 const pageSize = ref(10);
+const totalPages = computed(() => Math.ceil(totalFileCount.value / pageSize.value));
+
+// 当前页的文件列表
+const groupedFiles = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return allGroupedFiles.value.slice(start, end);
+});
+
+// 详情弹窗
+const detailModalVisible = ref(false);
+const selectedFile = ref<GroupedFile | null>(null);
 
 /**
  * 执行搜索
@@ -131,8 +160,9 @@ const handleSearch = async () => {
     const exactQuery = `"${query}"`;
     console.log('精确搜索:', exactQuery);
 
+    // 获取所有匹配的chunks（设置较大的limit）
     const result = await window.api.search.query(exactQuery, {
-      limit: pageSize.value,
+      limit: 500, // 获取足够多的结果
       offset: 0,
     });
 
@@ -140,89 +170,91 @@ const handleSearch = async () => {
       searchResults.value = result.data.hits;
       totalResults.value = result.data.estimatedTotalHits;
       searchTime.value = result.data.processingTimeMs;
-      console.log('搜索结果:', result.data);
+
+      // 按文件名分组
+      groupFilesByName(result.data.hits);
     } else {
       message.error(result.error || '搜索失败');
       searchResults.value = [];
       totalResults.value = 0;
+      allGroupedFiles.value = [];
+      totalFileCount.value = 0;
     }
   } catch (error) {
     console.error('搜索错误:', error);
     message.error('搜索过程中出现错误');
     searchResults.value = [];
     totalResults.value = 0;
+    allGroupedFiles.value = [];
+    totalFileCount.value = 0;
   } finally {
     searching.value = false;
   }
+};
+
+/**
+ * 按文件名分组
+ */
+const groupFilesByName = (hits: SearchHit[]) => {
+  const fileMap = new Map<string, GroupedFile>();
+
+  hits.forEach((hit) => {
+    if (!fileMap.has(hit.fileName)) {
+      fileMap.set(hit.fileName, {
+        fileName: hit.fileName,
+        filePath: hit.filePath,
+        fileType: hit.fileType,
+        totalPages: hit.totalPages,
+        matchCount: 0,
+        matches: [],
+      });
+    }
+
+    const file = fileMap.get(hit.fileName)!;
+    file.matchCount++;
+    file.matches.push(hit);
+  });
+
+  // 按匹配数量降序排序
+  allGroupedFiles.value = Array.from(fileMap.values()).sort((a, b) => b.matchCount - a.matchCount);
+  totalFileCount.value = allGroupedFiles.value.length;
+
+  // 重置到第一页
+  currentPage.value = 1;
 };
 
 /**
  * 页码改变
  */
-const handlePageChange = async (page: number) => {
-  const query = searchQuery.value.trim();
-  if (!query) return;
+const handlePageChange = (page: number) => {
+  // 只是切换显示的文件列表页，不需要重新搜索
+  currentPage.value = page;
 
-  searching.value = true;
+  // 滚动到顶部
+  document.querySelector('.results-container')?.scrollTo({ top: 0, behavior: 'smooth' });
+};
 
+/**
+ * 打开文件详情（显示所有匹配）
+ */
+const handleOpenFileDetail = (file: GroupedFile) => {
+  selectedFile.value = file;
+  detailModalVisible.value = true;
+};
+
+/**
+ * 在文件管理器中显示文件
+ */
+const handleShowInFolder = async (filePath: string) => {
   try {
-    // 使用精确匹配
-    const exactQuery = `"${query}"`;
-
-    const result = await window.api.search.query(exactQuery, {
-      limit: pageSize.value,
-      offset: (page - 1) * pageSize.value,
-    });
-
-    if (result.success && result.data) {
-      searchResults.value = result.data.hits;
-      searchTime.value = result.data.processingTimeMs;
-
-      // 滚动到顶部
-      document.querySelector('.results-container')?.scrollTo({ top: 0, behavior: 'smooth' });
+    const result = await window.api.shell.showItemInFolder(filePath);
+    if (!result.success) {
+      message.error(result.error || '无法打开文件夹');
     }
   } catch (error) {
-    console.error('加载分页错误:', error);
-    message.error('加载失败');
-  } finally {
-    searching.value = false;
+    console.error('打开文件夹失败:', error);
+    message.error('打开文件夹失败');
   }
-};
-
-/**
- * 打开文件
- */
-const handleOpenFile = (item: SearchHit) => {
-  console.log('打开文件:', item);
-  // TODO: 实现文件打开逻辑
-};
-
-/**
- * 获取格式化的文件名（带高亮）
- */
-const getFormattedFileName = (item: SearchHit): string => {
-  // 优先使用格式化后的文件名（包含高亮）
-  if (item._formatted?.fileName) {
-    return item._formatted.fileName;
-  }
-  return item.fileName;
-};
-
-/**
- * 获取格式化的内容（带高亮和裁剪）
- */
-const getFormattedContent = (item: SearchHit): string => {
-  // 优先使用格式化后的内容（已裁剪到匹配位置附近）
-  if (item._formatted?.content) {
-    return item._formatted.content;
-  }
-
-  // 降级方案：使用原始内容的前200个字符
-  const maxLength = 200;
-  if (item.content.length <= maxLength) {
-    return item.content;
-  }
-  return item.content.substring(0, maxLength) + '...';
 };
 </script>
 
@@ -256,7 +288,7 @@ const getFormattedContent = (item: SearchHit): string => {
 }
 
 .search-wrapper.search-active {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
 }
 
 .search-box {
@@ -342,11 +374,11 @@ const getFormattedContent = (item: SearchHit): string => {
 .results-content {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 8px;
 }
 
 .results-header {
-  padding: 12px 0;
+  padding: 8px 0;
   border-bottom: 1px solid #f0f0f0;
 }
 
@@ -358,91 +390,7 @@ const getFormattedContent = (item: SearchHit): string => {
 .results-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-.result-item {
-  padding: 16px;
-  background: #fff;
-  border-radius: 8px;
-  border: 1px solid #f0f0f0;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.result-item:hover {
-  border-color: #1890ff;
-  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
-  transform: translateY(-2px);
-}
-
-.result-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.file-name {
-  font-size: 16px;
-  font-weight: 500;
-  color: rgba(0, 0, 0, 0.85);
-}
-
-.page-range {
-  font-size: 12px;
-  color: #1890ff;
-  background: #e6f7ff;
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
-.result-content {
-  font-size: 14px;
-  color: rgba(0, 0, 0, 0.65);
-  line-height: 1.6;
-  margin-bottom: 8px;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-word;
-}
-
-/* 高亮标记样式 */
-.result-content:deep(mark),
-.file-name:deep(mark) {
-  background: #fff3cd;
-  color: #856404;
-  padding: 2px 4px;
-  border-radius: 3px;
-  font-weight: 500;
-}
-
-.result-footer {
-  display: flex;
-  align-items: center;
   gap: 8px;
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
-}
-
-.file-type {
-  text-transform: uppercase;
-  font-weight: 500;
-  color: #1890ff;
-}
-
-.divider {
-  color: rgba(0, 0, 0, 0.25);
-}
-
-.file-path {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .pagination-wrapper {
