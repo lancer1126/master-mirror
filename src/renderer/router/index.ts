@@ -14,6 +14,14 @@ const routes = [
         meta: {
           title: '主页',
         },
+      },
+      {
+        path: '/archive',
+        name: '归档',
+        component: () => import('@/views/archive/index.vue'),
+        meta: {
+          title: '归档',
+        },
       }
     ],
   },

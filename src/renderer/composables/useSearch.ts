@@ -2,24 +2,33 @@ import { message } from 'ant-design-vue';
 import { computed, ref } from 'vue';
 
 /**
- * 文件文档类型
+ * 搜索命中结果类型
  */
-export interface FileDocument {
+export interface SearchHit {
   id: string;
   fileName: string;
-  filePath: string;
-  content?: string;
-  fileSize: number;
   fileType: string;
-  uploadTime: number;
-  modifiedTime: number;
+  content: string;
+  pageRange?: string;
+  totalPages?: number;
+  chunkIndex: number;
+  totalChunks: number;
+  filePath: string;
+  createdAt: number;
+  metadata?: Record<string, any>;
+  _formatted?: {
+    content?: string;
+    fileName?: string;
+    [key: string]: any;
+  };
+  _matchesPosition?: Record<string, Array<{ start: number; length: number }>>;
 }
 
 /**
  * 搜索结果类型
  */
 export interface SearchResult {
-  hits: FileDocument[];
+  hits: SearchHit[];
   processingTimeMs: number;
   query: string;
   estimatedTotalHits: number;
@@ -52,7 +61,7 @@ export function useSearch() {
   const searchQuery = ref('');
 
   // 搜索结果
-  const searchResults = ref<FileDocument[]>([]);
+  const searchResults = ref<SearchHit[]>([]);
 
   // 搜索加载状态
   const isSearching = ref(false);
@@ -92,65 +101,6 @@ export function useSearch() {
     }
   };
 
-  /**
-   * 添加文档到索引
-   */
-  const addDocuments = async (documents: FileDocument[]): Promise<boolean> => {
-    try {
-      const result = await window.api.search.addDocuments(documents);
-      if (result.success) {
-        console.log('[useSearch] 文档添加成功, 数量:', documents.length);
-        return true;
-      } else {
-        message.error(`文档添加失败: ${result.error}`);
-        return false;
-      }
-    } catch (error: any) {
-      console.error('[useSearch] 文档添加失败:', error);
-      message.error(`文档添加失败: ${error.message}`);
-      return false;
-    }
-  };
-
-  /**
-   * 更新文档
-   */
-  const updateDocuments = async (documents: FileDocument[]): Promise<boolean> => {
-    try {
-      const result = await window.api.search.updateDocuments(documents);
-      if (result.success) {
-        console.log('[useSearch] 文档更新成功, 数量:', documents.length);
-        return true;
-      } else {
-        message.error(`文档更新失败: ${result.error}`);
-        return false;
-      }
-    } catch (error: any) {
-      console.error('[useSearch] 文档更新失败:', error);
-      message.error(`文档更新失败: ${error.message}`);
-      return false;
-    }
-  };
-
-  /**
-   * 删除文档
-   */
-  const deleteDocuments = async (documentIds: string[]): Promise<boolean> => {
-    try {
-      const result = await window.api.search.deleteDocuments(documentIds);
-      if (result.success) {
-        console.log('[useSearch] 文档删除成功, 数量:', documentIds.length);
-        return true;
-      } else {
-        message.error(`文档删除失败: ${result.error}`);
-        return false;
-      }
-    } catch (error: any) {
-      console.error('[useSearch] 文档删除失败:', error);
-      message.error(`文档删除失败: ${error.message}`);
-      return false;
-    }
-  };
 
   /**
    * 搜索
@@ -256,9 +206,6 @@ export function useSearch() {
 
     // 方法
     initIndex,
-    addDocuments,
-    updateDocuments,
-    deleteDocuments,
     search,
     clearResults,
     getStats,

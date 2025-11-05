@@ -1,28 +1,43 @@
 import { ipcMain } from 'electron';
 import { MeiliSearch } from 'meilisearch';
 
+import { MEILISEARCH_CONFIG } from '../constants';
 import { meilisearchService } from './meilisearch';
 
 /**
- * 文件索引文档结构
+ * 搜索结果（与上传模块的ParsedChunk对应）
  */
-export interface FileDocument {
-  /** 文件唯一ID */
+export interface SearchHit {
+  /** 分块ID */
   id: string;
   /** 文件名 */
   fileName: string;
-  /** 文件完整路径 */
-  filePath: string;
-  /** 文件内容（可选，用于全文搜索） */
-  content?: string;
-  /** 文件大小（字节） */
-  fileSize: number;
-  /** 文件类型/扩展名 */
+  /** 文件类型 */
   fileType: string;
-  /** 上传时间戳 */
-  uploadTime: number;
-  /** 文件修改时间戳 */
-  modifiedTime: number;
+  /** 文本内容 */
+  content: string;
+  /** 页码范围 */
+  pageRange?: string;
+  /** 总页数 */
+  totalPages?: number;
+  /** 分块索引 */
+  chunkIndex: number;
+  /** 总分块数 */
+  totalChunks: number;
+  /** 文件路径 */
+  filePath: string;
+  /** 创建时间 */
+  createdAt: number;
+  /** 元数据 */
+  metadata?: Record<string, any>;
+  /** 格式化后的内容（包含高亮和裁剪） */
+  _formatted?: {
+    content?: string;
+    fileName?: string;
+    [key: string]: any;
+  };
+  /** 匹配位置信息 */
+  _matchesPosition?: Record<string, Array<{ start: number; length: number }>>;
 }
 
 /**
@@ -30,7 +45,7 @@ export interface FileDocument {
  */
 export interface SearchResult {
   /** 搜索命中的文档 */
-  hits: FileDocument[];
+  hits: SearchHit[];
   /** 搜索耗时（毫秒） */
   processingTimeMs: number;
   /** 查询关键字 */
@@ -43,11 +58,6 @@ export interface SearchResult {
  * Meilisearch 客户端单例
  */
 let meiliClient: MeiliSearch | null = null;
-
-/**
- * 索引名称
- */
-const INDEX_NAME = 'files';
 
 /**
  * 获取或创建 Meilisearch 客户端
@@ -67,64 +77,28 @@ function getMeiliClient(): MeiliSearch {
  */
 async function initializeIndex(): Promise<void> {
   const client = getMeiliClient();
-  const index = client.index(INDEX_NAME);
+  const index = client.index(MEILISEARCH_CONFIG.DEFAULT_INDEX);
 
   try {
     // 检查索引是否存在
     await index.getRawInfo();
-    console.log('[Search] 索引已存在:', INDEX_NAME);
+    console.log('[Search] 索引已存在:', MEILISEARCH_CONFIG.DEFAULT_INDEX);
   } catch {
     // 索引不存在，创建新索引
-    console.log('[Search] 创建新索引:', INDEX_NAME);
-    await client.createIndex(INDEX_NAME, { primaryKey: 'id' });
+    console.log('[Search] 创建新索引:', MEILISEARCH_CONFIG.DEFAULT_INDEX);
+    await client.createIndex(MEILISEARCH_CONFIG.DEFAULT_INDEX, { primaryKey: 'id' });
   }
 
   // 配置可搜索的字段
   await index.updateSearchableAttributes(['fileName', 'content', 'filePath']);
 
   // 配置可过滤的字段
-  await index.updateFilterableAttributes(['fileType', 'uploadTime']);
+  await index.updateFilterableAttributes(['fileType', 'createdAt']);
 
   // 配置排序字段
-  await index.updateSortableAttributes(['uploadTime', 'fileName', 'fileSize']);
+  await index.updateSortableAttributes(['createdAt', 'fileName']);
 
   console.log('[Search] 索引配置完成');
-}
-
-/**
- * 添加文档到索引
- */
-async function addDocuments(documents: FileDocument[]): Promise<void> {
-  const index = getMeiliClient().index(INDEX_NAME);
-
-  const task = await index.addDocuments(documents);
-  console.log('[Search] 添加文档任务:', task.taskUid);
-
-  // 等待任务完成（简化版：不等待，异步处理）
-  // 在实际使用中，Meilisearch 会在后台处理，不需要阻塞
-  console.log('[Search] 文档添加完成, 数量:', documents.length);
-}
-
-/**
- * 更新文档
- */
-async function updateDocuments(documents: FileDocument[]): Promise<void> {
-  const index = getMeiliClient().index(INDEX_NAME);
-
-  const task = await index.updateDocuments(documents);
-  console.log('[Search] 文档更新任务:', task.taskUid);
-  console.log('[Search] 文档更新完成, 数量:', documents.length);
-}
-
-/**
- * 删除文档
- */
-async function deleteDocuments(documentIds: string[]): Promise<void> {
-  const index = getMeiliClient().index(INDEX_NAME);
-
-  const task = await index.deleteDocuments(documentIds);
-  console.log('[Search] 文档删除任务:', task.taskUid);
-  console.log('[Search] 文档删除完成, 数量:', documentIds.length);
 }
 
 /**
@@ -140,13 +114,20 @@ async function searchDocuments(
   },
 ): Promise<SearchResult> {
   const client = getMeiliClient();
-  const index = client.index(INDEX_NAME);
+  const index = client.index(MEILISEARCH_CONFIG.DEFAULT_INDEX);
 
-  const result = await index.search<FileDocument>(query, {
-    limit: options?.limit || 20,
+  const result = await index.search<SearchHit>(query, {
+    limit: options?.limit || 10,
     offset: options?.offset || 0,
     filter: options?.filter,
     sort: options?.sort,
+    // 启用内容裁剪和高亮
+    attributesToCrop: ['content'],
+    cropLength: 100, // 裁剪长度：匹配位置前后各150个字符
+    attributesToHighlight: ['content', 'fileName'],
+    highlightPreTag: '<mark>', // 高亮开始标签
+    highlightPostTag: '</mark>', // 高亮结束标签
+    showMatchesPosition: true, // 显示匹配位置
   });
 
   return {
@@ -166,7 +147,7 @@ async function getIndexStats(): Promise<{
   fieldDistribution: Record<string, number>;
 }> {
   const client = getMeiliClient();
-  const index = client.index(INDEX_NAME);
+  const index = client.index(MEILISEARCH_CONFIG.DEFAULT_INDEX);
 
   const stats = await index.getStats();
 
@@ -181,7 +162,7 @@ async function getIndexStats(): Promise<{
  * 清空索引
  */
 async function clearIndex(): Promise<void> {
-  const index = getMeiliClient().index(INDEX_NAME);
+  const index = getMeiliClient().index(MEILISEARCH_CONFIG.DEFAULT_INDEX);
 
   const task = await index.deleteAllDocuments();
   console.log('[Search] 清空索引任务:', task.taskUid);
@@ -203,38 +184,6 @@ export function registerSearchHandlers(): void {
     }
   });
 
-  // 添加文档
-  ipcMain.handle('search:addDocuments', async (_event, documents: FileDocument[]) => {
-    try {
-      await addDocuments(documents);
-      return { success: true };
-    } catch (error: any) {
-      console.error('[Search] 添加文档失败:', error);
-      return { success: false, error: error.message };
-    }
-  });
-
-  // 更新文档
-  ipcMain.handle('search:updateDocuments', async (_event, documents: FileDocument[]) => {
-    try {
-      await updateDocuments(documents);
-      return { success: true };
-    } catch (error: any) {
-      console.error('[Search] 更新文档失败:', error);
-      return { success: false, error: error.message };
-    }
-  });
-
-  // 删除文档
-  ipcMain.handle('search:deleteDocuments', async (_event, documentIds: string[]) => {
-    try {
-      await deleteDocuments(documentIds);
-      return { success: true };
-    } catch (error: any) {
-      console.error('[Search] 删除文档失败:', error);
-      return { success: false, error: error.message };
-    }
-  });
 
   // 搜索
   ipcMain.handle(

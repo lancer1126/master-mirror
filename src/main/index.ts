@@ -95,6 +95,16 @@ if (isSingleInstance) {
     // 后台启动 Meilisearch 服务
     if (mainWindow) {
       initializeMeilisearch(mainWindow);
+
+      // 初始化搜索索引（延迟执行，等待 Meilisearch 启动）
+      setTimeout(async () => {
+        try {
+          await mainWindow?.webContents.executeJavaScript('window.api.search.init()');
+          console.log('[App] 搜索索引初始化完成');
+        } catch (error) {
+          console.error('[App] 搜索索引初始化失败:', error);
+        }
+      }, 3000);
     }
 
     // macOS 特性：点击 Dock 图标重新创建窗口

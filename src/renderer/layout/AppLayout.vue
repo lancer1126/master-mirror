@@ -1,20 +1,21 @@
 <template>
   <div
     class="app-layout"
-    @dragenter.prevent="handleDragEnter"
-    @dragover.prevent="handleDragOver"
-    @dragleave.prevent="handleDragLeave"
-    @drop.prevent="handleDrop"
+    @dragenter.prevent="handleGlobalDragEnter"
+    @dragover.prevent="handleGlobalDragOver"
+    @dragleave.prevent="handleGlobalDragLeave"
+    @drop.prevent="handleGlobalDrop"
   >
     <header class="app-header">
       <div class="header-content">
         <div class="logo"></div>
         <div class="header-actions">
-          <a-button class="action-btn">上传</a-button>
-          <a-button class="action-btn">历史</a-button>
+          <a-button v-if="!isHomePage" class="action-btn" @click="goToHome">主页</a-button>
+          <a-button class="action-btn" @click="showUpload">上传</a-button>
+          <a-button class="action-btn" @click="goToArchive">归档</a-button>
           <a-button type="text" class="action-btn" @click="showSettings">
             <template #icon>
-              <SettingOutlined />
+              <setting-outlined />
             </template>
           </a-button>
         </div>
@@ -31,28 +32,72 @@
     <!-- 设置弹窗 -->
     <settings-modal v-model:open="settingsVisible" />
 
-    <!-- 拖拽上传遮罩 -->
-    <upload-overlay :visible="isDragging" />
+    <!-- 上传弹窗 -->
+    <upload-modal v-model:open="uploadVisible" />
+
+    <!-- 全局拖拽上传遮罩 -->
+    <upload-overlay :visible="isGlobalDragging" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { message } from 'ant-design-vue';
+import { SettingOutlined } from '@ant-design/icons-vue';
+import { computed } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 
 import NotificationList from '@/components/NotificationList.vue';
 import SettingsModal from '@/components/SettingsModal.vue';
+import UploadModal from '@/components/UploadModal.vue';
 import UploadOverlay from '@/components/UploadOverlay.vue';
+import { useFileUpload } from '@/composables/useFileUpload';
 import { useNotifications } from '@/composables/useNotifications';
 
+const router = useRouter();
+const route = useRoute();
+
+// 判断是否在主页
+const isHomePage = computed(() => route.path === '/');
+
+// 弹窗状态
 const settingsVisible = ref(false);
-const isDragging = ref(false);
+const uploadVisible = ref(false);
+
+// 全局拖拽状态
+const isGlobalDragging = ref(false);
 let dragCounter = 0; // 用于处理嵌套元素的拖拽事件
+
+// 使用上传 Hook
+const { uploadFileObjects } = useFileUpload();
 
 const { error: showError } = useNotifications();
 let meilisearchErrorId: string | null = null;
 
+/**
+ * 显示设置弹窗
+ */
 const showSettings = () => {
   settingsVisible.value = true;
+};
+
+/**
+ * 显示上传弹窗
+ */
+const showUpload = () => {
+  uploadVisible.value = true;
+};
+
+/**
+ * 跳转到主页页面
+ */
+const goToHome = () => {
+  router.push('/');
+};
+
+/**
+ * 跳转到归档页面
+ */
+const goToArchive = () => {
+  router.push('/archive');
 };
 
 // 监听 Meilisearch 状态
@@ -91,78 +136,71 @@ onMounted(async () => {
   });
 });
 
-// 拖拽进入
-const handleDragEnter = (e: DragEvent) => {
+/**
+ * 全局拖拽事件处理（仅在非Modal区域）
+ */
+
+// 全局拖拽进入
+const handleGlobalDragEnter = (e: DragEvent) => {
+  // 如果上传弹窗已打开，不处理全局拖拽
+  if (uploadVisible.value) {
+    return;
+  }
+
   dragCounter++;
   if (e.dataTransfer?.types.includes('Files')) {
-    isDragging.value = true;
+    isGlobalDragging.value = true;
   }
 };
 
-// 拖拽经过
-const handleDragOver = (e: DragEvent) => {
+// 全局拖拽经过
+const handleGlobalDragOver = (e: DragEvent) => {
+  // 如果上传弹窗已打开，不处理全局拖拽
+  if (uploadVisible.value) {
+    return;
+  }
+
   if (e.dataTransfer) {
     e.dataTransfer.dropEffect = 'copy';
   }
 };
 
-// 拖拽离开
-const handleDragLeave = () => {
+// 全局拖拽离开
+const handleGlobalDragLeave = () => {
+  // 如果上传弹窗已打开，不处理全局拖拽
+  if (uploadVisible.value) {
+    return;
+  }
+
   dragCounter--;
   if (dragCounter === 0) {
-    isDragging.value = false;
+    isGlobalDragging.value = false;
   }
 };
 
-// 文件放置
-const handleDrop = async (e: DragEvent) => {
+// 全局文件放置
+const handleGlobalDrop = async (e: DragEvent) => {
   dragCounter = 0;
-  isDragging.value = false;
+  isGlobalDragging.value = false;
+
+  // 如果上传弹窗已打开，不处理全局拖拽
+  if (uploadVisible.value) {
+    return;
+  }
 
   const files = e.dataTransfer?.files;
   if (!files || files.length === 0) {
     return;
   }
 
-  // 获取文件路径
-  const filePaths: string[] = [];
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    // @ts-ignore - Electron 环境下 File 对象有 path 属性
-    if (file.path) {
-      // @ts-ignore
-      filePaths.push(file.path);
-    }
-  }
+  // 转换为数组
+  const fileArray = Array.from(files) as File[];
 
-  if (filePaths.length === 0) {
-    message.warning('未检测到有效文件');
-    return;
-  }
-
-  // 上传文件
-  try {
-    message.loading({ content: '正在上传文件...', key: 'upload', duration: 0 });
-    const result = await window.api.upload.files(filePaths);
-
-    if (result.success && result.data) {
-      const { success, failed } = result.data;
-      message.destroy('upload');
-
-      if (failed.length === 0) {
-        message.success(`成功上传 ${success.length} 个文件`);
-      } else {
-        message.warning(`上传完成：成功 ${success.length} 个，失败 ${failed.length} 个`);
-      }
-    } else {
-      message.destroy('upload');
-      message.error(result.error || '文件上传失败');
-    }
-  } catch (error) {
-    message.destroy('upload');
-    message.error('文件上传失败');
-    console.error('上传错误:', error);
-  }
+  // 使用 composable 处理上传
+  await uploadFileObjects(fileArray, {
+    showLoading: true,
+    showSuccess: true,
+  });
 };
 </script>
 

@@ -1,41 +1,114 @@
-import { ipcMain } from 'electron';
-import { copyFile, mkdir } from 'fs/promises';
-import { basename, join } from 'path';
+/**
+ * 文件上传和索引模块
+ * 负责文件解析和索引到 Meilisearch
+ */
 
-import { getStore } from './appConfig';
+import { BrowserWindow, ipcMain } from 'electron';
+import { MeiliSearch } from 'meilisearch';
+import { basename } from 'path';
+
+import { MEILISEARCH_CONFIG, PARSER_CONFIG } from '../constants';
+import type { ParsedChunk, ParseProgress } from '../parsers';
+import { parserFactory } from '../parsers';
+import { meilisearchService } from './meilisearch';
 
 /**
- * 上传文件到索引目录
+ * 解析并索引文件
  * @param filePaths 文件路径数组
- * @returns 成功上传的文件列表
+ * @param mainWindow 主窗口实例（用于发送进度通知）
  */
-async function uploadFiles(filePaths: string[]): Promise<{ success: string[]; failed: string[] }> {
-  const store = getStore();
-  const searchIndexPath = store.get('searchIndexPath');
-
-  if (!searchIndexPath) {
-    throw new Error('未设置索引文件保存位置');
-  }
-
-  // 确保目标目录存在
-  await mkdir(searchIndexPath, { recursive: true });
-
+async function parseAndIndexFiles(
+  filePaths: string[],
+  mainWindow: BrowserWindow | null,
+): Promise<{
+  success: string[];
+  failed: Array<{ fileName: string; error: string }>;
+}> {
   const success: string[] = [];
-  const failed: string[] = [];
+  const failed: Array<{ fileName: string; error: string }> = [];
 
+  // 创建 Meilisearch 客户端
+  const meilisearchClient = new MeiliSearch({
+    host: meilisearchService.getUrl(),
+    apiKey: meilisearchService.getMasterKey(),
+  });
+
+  const index = meilisearchClient.index(MEILISEARCH_CONFIG.DEFAULT_INDEX);
+
+  // 逐个处理文件
   for (const filePath of filePaths) {
+    const fileName = basename(filePath);
+
     try {
-      const fileName = basename(filePath);
-      const destPath = join(searchIndexPath, fileName);
+      // 1. 检查文件类型是否支持
+      if (!parserFactory.isSupported(filePath)) {
+        throw new Error(`不支持的文件类型`);
+      }
 
-      // 复制文件到目标目录
-      await copyFile(filePath, destPath);
+      // 2. 获取解析器
+      const parser = parserFactory.getParser(filePath);
+      if (!parser) {
+        throw new Error(`无法获取解析器`);
+      }
+
+      // 进度回调：发送进度到渲染进程
+      const progressCallback = (progress: ParseProgress) => {
+        mainWindow?.webContents.send('file:parse:progress', progress);
+      };
+
+      console.log(`[Upload] 开始解析文件: ${fileName}`);
+      
+      const parseResult = await parser.parse(
+        filePath,
+        {
+          chunkSize: PARSER_CONFIG.PDF_CHUNK_SIZE,
+          maxChunks: PARSER_CONFIG.MAX_CHUNKS,
+          extractMetadata: true,
+        },
+        progressCallback,
+      );
+
+      console.log(`[Upload] 解析结果:`, {
+        success: parseResult.success,
+        fileName: parseResult.fileName,
+        chunksLength: parseResult.chunks.length,
+        total: parseResult.total,
+        error: parseResult.error,
+      });
+
+      if (!parseResult.success) {
+        throw new Error(parseResult.error || '文件解析失败');
+      }
+
+      if (parseResult.chunks.length === 0) {
+        throw new Error('解析结果为空，没有提取到任何内容');
+      }
+
+      console.log(
+        `[Upload] 文件解析成功: ${fileName}, 分块数: ${parseResult.chunks.length}`,
+      );
+
+      // 3. 批量索引到 Meilisearch
+      await indexChunks(index, parseResult.chunks, fileName, mainWindow, meilisearchClient);
+
       success.push(fileName);
+      console.log(`[Upload] 文件处理完成: ${fileName}`);
+    } catch (error: any) {
+      console.error(`[Upload] 文件处理失败: ${fileName}`, error);
+      failed.push({
+        fileName,
+        error: error.message || '处理失败',
+      });
 
-      console.log(`文件上传成功: ${fileName} -> ${destPath}`);
-    } catch (error) {
-      console.error(`文件上传失败: ${filePath}`, error);
-      failed.push(basename(filePath));
+      // 发送失败通知
+      mainWindow?.webContents.send('file:parse:progress', {
+        fileName,
+        current: 0,
+        total: 100,
+        percentage: 0,
+        status: 'failed',
+        message: error.message || '处理失败',
+      });
     }
   }
 
@@ -43,22 +116,131 @@ async function uploadFiles(filePaths: string[]): Promise<{ success: string[]; fa
 }
 
 /**
+ * 批量索引文档分块到 Meilisearch
+ */
+async function indexChunks(
+  index: any,
+  chunks: ParsedChunk[],
+  fileName: string,
+  mainWindow: BrowserWindow | null,
+  client: MeiliSearch,
+): Promise<void> {
+  const totalChunks = chunks.length;
+  const batchSize = PARSER_CONFIG.BATCH_SIZE;
+
+  console.log(`[Upload] 开始索引: ${fileName}, 总分块数: ${totalChunks}`);
+  console.log(`[Upload] 目标索引: ${MEILISEARCH_CONFIG.DEFAULT_INDEX}`);
+
+  // 分批索引
+  for (let i = 0; i < totalChunks; i += batchSize) {
+    const batch = chunks.slice(i, Math.min(i + batchSize, totalChunks));
+
+    console.log(`[Upload] 准备索引批次 ${Math.floor(i / batchSize) + 1}:`, {
+      batchSize: batch.length,
+      firstId: batch[0]?.id
+    });
+
+    // 发送索引进度
+    mainWindow?.webContents.send('file:parse:progress', {
+      fileName,
+      current: Math.min(i + batchSize, totalChunks),
+      total: totalChunks,
+      percentage: Math.floor((Math.min(i + batchSize, totalChunks) / totalChunks) * 100),
+      status: 'indexing',
+      message: `正在索引 ${Math.min(i + batchSize, totalChunks)}/${totalChunks} 个分块...`,
+    });
+
+    try {
+      // 批量添加文档
+      const response = await index.addDocuments(batch, { primaryKey: 'id' });
+      console.log(`[Upload] 批次索引提交: taskUid=${response.taskUid}, status=${response.status}`);
+
+      // 等待任务完成（使用 client.tasks.waitForTask）
+      const task = await client.tasks.waitForTask(response.taskUid, {
+        timeout: 30000, // 30秒超时
+        interval: 100, // 每100ms检查一次
+      });
+
+      console.log(
+        `[Upload] 批次索引完成: ${i + 1}-${Math.min(i + batchSize, totalChunks)}/${totalChunks}, 任务状态: ${task.status}`,
+      );
+
+      if (task.status === 'failed') {
+        console.error(`[Upload] 索引任务失败:`, task.error);
+        throw new Error(`索引失败: ${task.error?.message || '未知错误'}`);
+      }
+    } catch (error: any) {
+      console.error(`[Upload] 批次索引失败:`, error);
+      throw error;
+    }
+  }
+
+  // 发送索引完成通知
+  mainWindow?.webContents.send('file:parse:progress', {
+    fileName,
+    current: totalChunks,
+    total: totalChunks,
+    percentage: 100,
+    status: 'completed',
+    message: '索引完成',
+  });
+
+  console.log(`[Upload] ✅ 索引完成: ${fileName}`);
+
+  // 验证索引结果
+  try {
+    const stats = await index.getStats();
+    console.log(`[Upload] 索引统计信息:`, {
+      numberOfDocuments: stats.numberOfDocuments,
+      isIndexing: stats.isIndexing,
+    });
+  } catch (error) {
+    console.error(`[Upload] 获取索引统计失败:`, error);
+  }
+}
+
+/**
+ * 获取支持的文件类型
+ */
+function getSupportedFileTypes(): string[] {
+  return parserFactory.getSupportedExtensions();
+}
+
+/**
  * 注册文件上传相关的 IPC 处理程序
  */
 export function registerUploadHandlers(): void {
-  // 上传文件
-  ipcMain.handle('file:upload', async (_event, filePaths: string[]) => {
+  // 解析并索引文件
+  ipcMain.handle('file:upload', async (event, filePaths: string[]) => {
     try {
-      const result = await uploadFiles(filePaths);
+      const mainWindow = BrowserWindow.fromWebContents(event.sender);
+      const result = await parseAndIndexFiles(filePaths, mainWindow);
+
       return {
         success: true,
         data: result,
       };
     } catch (error: any) {
-      console.error('文件上传失败:', error);
+      console.error('[Upload] 文件处理失败:', error);
       return {
         success: false,
-        error: error.message || '文件上传失败',
+        error: error.message || '文件处理失败',
+      };
+    }
+  });
+
+  // 获取支持的文件类型
+  ipcMain.handle('file:getSupportedTypes', async () => {
+    try {
+      return {
+        success: true,
+        data: getSupportedFileTypes(),
+      };
+    } catch (error: any) {
+      console.error('[Upload] 获取支持的文件类型失败:', error);
+      return {
+        success: false,
+        error: error.message,
       };
     }
   });

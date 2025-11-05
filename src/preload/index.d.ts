@@ -11,24 +11,42 @@ interface UploadResult {
   success: boolean;
   data?: {
     success: string[];
-    failed: string[];
+    failed: Array<{ fileName: string; error: string }>;
   };
   error?: string;
 }
 
-interface FileDocument {
+interface ParseProgress {
+  fileName: string;
+  current: number;
+  total: number;
+  percentage: number;
+  status: 'parsing' | 'indexing' | 'completed' | 'failed';
+  message?: string;
+}
+
+interface SearchHit {
   id: string;
   fileName: string;
-  filePath: string;
-  content?: string;
-  fileSize: number;
   fileType: string;
-  uploadTime: number;
-  modifiedTime: number;
+  content: string;
+  pageRange?: string;
+  totalPages?: number;
+  chunkIndex: number;
+  totalChunks: number;
+  filePath: string;
+  createdAt: number;
+  metadata?: Record<string, any>;
+  _formatted?: {
+    content?: string;
+    fileName?: string;
+    [key: string]: any;
+  };
+  _matchesPosition?: Record<string, Array<{ start: number; length: number }>>;
 }
 
 interface SearchResult {
-  hits: FileDocument[];
+  hits: SearchHit[];
   processingTimeMs: number;
   query: string;
   estimatedTotalHits: number;
@@ -62,18 +80,10 @@ interface API {
   };
   upload: {
     files: (filePaths: string[]) => Promise<UploadResult>;
+    getSupportedTypes: () => Promise<{ success: boolean; data?: string[]; error?: string }>;
   };
   search: {
     init: () => Promise<{ success: boolean; error?: string }>;
-    addDocuments: (
-      documents: FileDocument[],
-    ) => Promise<{ success: boolean; error?: string }>;
-    updateDocuments: (
-      documents: FileDocument[],
-    ) => Promise<{ success: boolean; error?: string }>;
-    deleteDocuments: (
-      documentIds: string[],
-    ) => Promise<{ success: boolean; error?: string }>;
     query: (
       query: string,
       options?: SearchOptions,
@@ -97,6 +107,8 @@ interface ipcRenderer {
   on: (channel: string, listener: (...args: any[]) => void) => () => void;
   removeAllListeners: (channel: string) => void;
   onMeilisearchStatus: (callback: (status: MeilisearchStatus) => void) => () => void;
+  onFileParseProgress: (callback: (progress: ParseProgress) => void) => () => void;
+  getPathForFile: (file: File) => string;
 }
 
 /**

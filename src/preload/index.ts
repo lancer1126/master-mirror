@@ -1,5 +1,5 @@
 import { electronAPI } from '@electron-toolkit/preload';
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 
 /**
  * 自定义 API
@@ -23,15 +23,11 @@ const api = {
   // 文件上传 API
   upload: {
     files: (filePaths: string[]) => ipcRenderer.invoke('file:upload', filePaths),
+    getSupportedTypes: () => ipcRenderer.invoke('file:getSupportedTypes'),
   },
   // 搜索 API
   search: {
     init: () => ipcRenderer.invoke('search:init'),
-    addDocuments: (documents: any[]) => ipcRenderer.invoke('search:addDocuments', documents),
-    updateDocuments: (documents: any[]) =>
-      ipcRenderer.invoke('search:updateDocuments', documents),
-    deleteDocuments: (documentIds: string[]) =>
-      ipcRenderer.invoke('search:deleteDocuments', documentIds),
     query: (query: string, options?: any) => ipcRenderer.invoke('search:query', query, options),
     stats: () => ipcRenderer.invoke('search:stats'),
     clear: () => ipcRenderer.invoke('search:clear'),
@@ -72,6 +68,18 @@ const ipc = {
     return () => {
       ipcRenderer.removeListener('meilisearch:status', listener);
     };
+  },
+  // 监听文件解析进度
+  onFileParseProgress: (callback: (progress: any) => void) => {
+    const listener = (_: any, progress: any) => callback(progress);
+    ipcRenderer.on('file:parse:progress', listener);
+    return () => {
+      ipcRenderer.removeListener('file:parse:progress', listener);
+    };
+  },
+  // 获取File对象的真实路径（Electron专用）
+  getPathForFile: (file: File) => {
+    return webUtils.getPathForFile(file);
   },
 };
 

@@ -143,7 +143,7 @@ class MeilisearchService {
           if (!this.isRunning) {
             clearTimeout(timeout);
             this.isRunning = true;
-            console.log('[Meilisearch] ✅ 服务启动成功!');
+            console.log('[Meilisearch] 服务启动成功!');
             console.log(`[Meilisearch] 访问地址: http://${MEILISEARCH_CONFIG.HOST}:${port}`);
             resolve();
           }
@@ -153,14 +153,14 @@ class MeilisearchService {
       // 监听标准输出
       this.process.stdout?.on('data', (data) => {
         const output = data.toString();
-        console.log('[Meilisearch]', output.trim());
+        // console.log('[Meilisearch]', output.trim());
         checkStartupSuccess(output);
       });
 
       // 监听标准错误输出（Meilisearch 主要使用 stderr 输出日志）
       this.process.stderr?.on('data', (data) => {
         const output = data.toString();
-        console.log('[Meilisearch]', output.trim());
+        // console.log('[Meilisearch]', output.trim());
         checkStartupSuccess(output);
       });
 
@@ -201,7 +201,7 @@ class MeilisearchService {
       this.process.once('exit', () => {
         this.isRunning = false;
         this.process = null;
-        console.log('[Meilisearch] ✅ 服务已停止');
+        console.log('[Meilisearch] 服务已停止');
         resolve();
       });
 
@@ -290,7 +290,6 @@ export function initializeMeilisearch(mainWindow: Electron.BrowserWindow): void 
       // 如果窗口已经加载完成，立即发送
       if (mainWindow && mainWindow.webContents.isLoading() === false) {
         mainWindow.webContents.send('meilisearch:status', meilisearchStatus);
-        console.log('[App] 发送 Meilisearch 状态到渲染进程: success');
       }
     })
     .catch((error) => {
@@ -303,7 +302,6 @@ export function initializeMeilisearch(mainWindow: Electron.BrowserWindow): void 
       // 如果窗口已经加载完成，立即发送
       if (mainWindow && mainWindow.webContents.isLoading() === false) {
         mainWindow.webContents.send('meilisearch:status', meilisearchStatus);
-        console.log('[App] 发送 Meilisearch 状态到渲染进程: error');
       }
     });
 }
