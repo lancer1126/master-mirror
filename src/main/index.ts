@@ -2,14 +2,23 @@ import { electronApp, is, optimizer } from '@electron-toolkit/utils';
 import { app, BrowserWindow, shell } from 'electron';
 import { join } from 'path';
 
-import { configRelateWindow,registerConfigHandlers } from './modules/config';
+import { APP_INFO, WINDOW } from './constants';
+import { configRelateWindow, registerConfigHandlers } from './modules/appConfig';
+import {
+  initializeMeilisearch,
+  registerMeilisearchHandlers,
+  setupMeilisearchCleanup,
+  setupMeilisearchStatusListener,
+} from './modules/meilisearch';
+import { registerSearchHandlers } from './modules/search';
+import { registerUploadHandlers } from './modules/upload';
 
 let mainWindow: BrowserWindow | null = null;
 
 /**
  * 设置应用名称
  */
-app.setName('MasterMirror');
+app.setName(APP_INFO.NAME);
 
 /**
  * 创建主窗口
@@ -17,8 +26,8 @@ app.setName('MasterMirror');
 function createWindow(): void {
   // 创建浏览器窗口
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: WINDOW.DEFAULT_WIDTH,
+    height: WINDOW.DEFAULT_HEIGHT,
     show: false,
     autoHideMenuBar: true, // 隐藏菜单栏
     webPreferences: {
@@ -37,6 +46,9 @@ function createWindow(): void {
     mainWindow?.show();
   });
 
+  // 设置 Meilisearch 状态监听器
+  setupMeilisearchStatusListener(mainWindow);
+
   // 拦截新窗口打开，使用默认浏览器
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url);
@@ -48,7 +60,7 @@ function createWindow(): void {
     // 开发环境：加载 Vite 开发服务器
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
     // 自动打开开发者工具
-    mainWindow.webContents.openDevTools();
+    // mainWindow.webContents.openDevTools();
   } else {
     // 生产环境：加载构建后的 HTML
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
@@ -59,12 +71,18 @@ function createWindow(): void {
 const isSingleInstance = app.requestSingleInstanceLock();
 if (isSingleInstance) {
   // 应用准备就绪
-  app.whenReady().then(() => {
+  app.whenReady().then(async () => {
     // 设置应用 ID（Windows）
-    electronApp.setAppUserModelId('fun.lance.mastermirror');
+    electronApp.setAppUserModelId(APP_INFO.APP_ID);
 
     // 注册配置相关的 IPC 处理程序
     registerConfigHandlers();
+    // 注册文件上传相关的 IPC 处理程序
+    registerUploadHandlers();
+    // 注册搜索相关的 IPC 处理程序
+    registerSearchHandlers();
+    // 注册 Meilisearch 相关的 IPC 处理程序
+    registerMeilisearchHandlers();
 
     // 开发环境下，F12 打开开发者工具
     app.on('browser-window-created', (_, window) => {
@@ -73,6 +91,11 @@ if (isSingleInstance) {
 
     // 创建主窗口
     createWindow();
+
+    // 后台启动 Meilisearch 服务
+    if (mainWindow) {
+      initializeMeilisearch(mainWindow);
+    }
 
     // macOS 特性：点击 Dock 图标重新创建窗口
     app.on('activate', () => {
@@ -89,11 +112,8 @@ if (isSingleInstance) {
     }
   });
 
-  // 应用即将退出前的清理工作
-  app.on('before-quit', () => {
-    // 在这里可以添加清理逻辑
-    console.log('Application is quitting...');
-  });
+  // 设置应用退出时的清理逻辑
+  setupMeilisearchCleanup();
 } else {
   app.quit();
 }

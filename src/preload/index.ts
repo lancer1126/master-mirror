@@ -18,6 +18,27 @@ const api = {
   // 对话框 API
   dialog: {
     selectDirectory: () => ipcRenderer.invoke('dialog:selectDirectory'),
+    selectMeilisearchFile: () => ipcRenderer.invoke('dialog:selectMeilisearchFile'),
+  },
+  // 文件上传 API
+  upload: {
+    files: (filePaths: string[]) => ipcRenderer.invoke('file:upload', filePaths),
+  },
+  // 搜索 API
+  search: {
+    init: () => ipcRenderer.invoke('search:init'),
+    addDocuments: (documents: any[]) => ipcRenderer.invoke('search:addDocuments', documents),
+    updateDocuments: (documents: any[]) =>
+      ipcRenderer.invoke('search:updateDocuments', documents),
+    deleteDocuments: (documentIds: string[]) =>
+      ipcRenderer.invoke('search:deleteDocuments', documentIds),
+    query: (query: string, options?: any) => ipcRenderer.invoke('search:query', query, options),
+    stats: () => ipcRenderer.invoke('search:stats'),
+    clear: () => ipcRenderer.invoke('search:clear'),
+  },
+  // Meilisearch 状态 API
+  meilisearch: {
+    getStatus: () => ipcRenderer.invoke('meilisearch:getStatus'),
   },
 };
 
@@ -43,6 +64,14 @@ const ipc = {
   // 移除所有监听器
   removeAllListeners: (channel: string) => {
     ipcRenderer.removeAllListeners(channel);
+  },
+  // 监听 Meilisearch 状态
+  onMeilisearchStatus: (callback: (status: any) => void) => {
+    const listener = (_: any, status: any) => callback(status);
+    ipcRenderer.on('meilisearch:status', listener);
+    return () => {
+      ipcRenderer.removeListener('meilisearch:status', listener);
+    };
   },
 };
 
