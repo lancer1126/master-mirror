@@ -3,11 +3,11 @@
     <div class="file-header">
       <div class="file-title">
         <span class="file-name">{{ file.fileName }}</span>
-        <a-tag color="blue" class="match-badge">{{ file.matchCount }} 处匹配</a-tag>
+        <a-tag color="blue" class="match-badge">{{ matchDescription }}</a-tag>
       </div>
       <a-tag color="success">{{ file.fileType.toUpperCase() }}</a-tag>
     </div>
-    <div class="file-preview">{{ preview }}</div>
+    <div class="file-preview" v-html="preview"></div>
     <div class="file-footer">
       <span class="file-path" @click.stop="handleShowFolder">
         <folder-open-outlined class="folder-icon" />
@@ -15,54 +15,43 @@
       </span>
       <span v-if="file.totalPages" class="page-info">共 {{ file.totalPages }} 页</span>
     </div>
+
+    <!-- 详情弹窗 -->
+    <search-detail-modal v-model:open="detailModalVisible" :file="file" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { FolderOpenOutlined } from '@ant-design/icons-vue';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
-interface SearchHit {
-  id: string;
-  fileName: string;
-  fileType: string;
-  content: string;
-  pageRange?: string;
-  totalPages?: number;
-  chunkIndex: number;
-  totalChunks: number;
-  filePath: string;
-  createdAt: number;
-  _formatted?: {
-    content?: string;
-    fileName?: string;
-    [key: string]: any;
-  };
-}
+import type { GroupedFile } from '@/types';
 
-interface GroupedFile {
-  fileName: string;
-  filePath: string;
-  fileType: string;
-  totalPages?: number;
-  matchCount: number;
-  matches: SearchHit[];
-}
+import SearchDetailModal from './SearchDetailModal.vue';
 
 interface Props {
   file: GroupedFile;
 }
 
 interface Emits {
-  (e: 'click', file: GroupedFile): void;
   (e: 'showInFolder', filePath: string): void;
 }
 
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
+// 详情弹窗状态
+const detailModalVisible = ref(false);
+
 /**
- * 获取预览内容
+ * 匹配描述（区分chunk数和匹配数）
+ */
+const matchDescription = computed(() => {
+  return `${props.file.matchCount} 处匹配`;
+});
+
+/**
+ * 获取预览内容（保留高亮标记）
  */
 const preview = computed(() => {
   if (props.file.matches.length === 0) return '';
@@ -70,21 +59,26 @@ const preview = computed(() => {
   const firstMatch = props.file.matches[0];
 
   if (firstMatch._formatted?.content) {
-    const text = firstMatch._formatted.content.replace(/<\/?mark>/g, '');
-    const maxLength = 100;
-    return text.length <= maxLength ? text : text.substring(0, maxLength) + '...';
+    const htmlContent = firstMatch._formatted.content;
+    const maxLength = 150;
+
+    // 如果内容太长，截取但保留完整的标签
+    if (htmlContent.length > maxLength) {
+      return htmlContent.substring(0, maxLength) + '...';
+    }
+
+    return htmlContent;
   }
 
-  const maxLength = 100;
-  const content = firstMatch.content;
-  return content.length <= maxLength ? content : content.substring(0, maxLength) + '...';
+  // 如果没有格式化内容，返回空（通常不会发生）
+  return '';
 });
 
 /**
- * 点击卡片
+ * 点击卡片 - 打开详情弹窗
  */
 const handleClick = () => {
-  emit('click', props.file);
+  detailModalVisible.value = true;
 };
 
 /**
@@ -149,6 +143,15 @@ const handleShowFolder = () => {
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
+}
+
+/* 高亮搜索关键词 */
+.file-preview:deep(mark) {
+  background: #fff3cd;
+  color: #856404;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 600;
 }
 
 .file-footer {

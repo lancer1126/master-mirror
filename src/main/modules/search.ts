@@ -15,7 +15,7 @@ export interface SearchHit {
   /** 文件类型 */
   fileType: string;
   /** 文本内容 */
-  content: string;
+  content?: string;
   /** 页码范围 */
   pageRange?: string;
   /** 总页数 */
@@ -121,9 +121,21 @@ async function searchDocuments(
     offset: options?.offset || 0,
     filter: options?.filter,
     sort: options?.sort,
-    // 启用内容裁剪和高亮
-    attributesToCrop: ['content'],
-    cropLength: 100, // 裁剪长度：匹配位置前后各150个字符
+    // 只返回必要的字段，排除完整的 content 字段以节省性能
+    attributesToRetrieve: [
+      'id',
+      'fileName',
+      'fileType',
+      'pageRange',
+      'totalPages',
+      'chunkIndex',
+      'totalChunks',
+      'filePath',
+      'createdAt',
+    ],
+    attributesToCrop: ['content'], // 启用内容裁剪和高亮
+    cropLength: 200, // 裁剪长度：匹配位置前后的字符数（中文约100字，英文约200词）
+    cropMarker: '...', // 裁剪标记
     attributesToHighlight: ['content', 'fileName'],
     highlightPreTag: '<mark>', // 高亮开始标签
     highlightPostTag: '</mark>', // 高亮结束标签

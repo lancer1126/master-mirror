@@ -9,36 +9,39 @@
   >
     <div class="detail-content">
       <!-- 文件信息 -->
-      <div class="file-info-header">
+      <div v-if="file" class="file-info-header">
         <div class="file-title-row">
-          <h3 class="file-title">{{ fileName }}</h3>
+          <h3 class="file-title">{{ file.fileName }}</h3>
           <div class="file-stats">
-            <a-tag color="blue">{{ matches.length }} 处匹配</a-tag>
-            <a-tag v-if="totalPages" color="default">{{ totalPages }} 页</a-tag>
+            <a-tag color="blue">{{ file.matchCount }} 处匹配</a-tag>
+            <a-tag v-if="file.totalPages" color="default">共 {{ file.totalPages }} 页</a-tag>
           </div>
         </div>
         <div class="file-path-row" @click="handleShowInFolder">
           <folder-open-outlined class="path-icon" />
-          <span class="path-text">{{ filePath }}</span>
+          <span class="path-text">{{ file.filePath }}</span>
         </div>
       </div>
 
       <a-divider style="margin: 16px 0" />
 
       <!-- 匹配列表 -->
-      <div class="matches-container">
-        <div v-for="(match, index) in matches" :key="match.id" class="match-item">
+      <div v-if="file" class="matches-container">
+        <div v-for="(match, index) in file.matches" :key="match.id" class="match-item">
           <div class="match-header">
             <span class="match-number">#{{ index + 1 }}</span>
             <span v-if="match.pageRange" class="page-info">{{ match.pageRange }}</span>
             <span class="chunk-info">分块 {{ match.chunkIndex + 1 }}/{{ match.totalChunks }}</span>
+            <a-tag v-if="getMatchCountInChunk(match) > 1" color="orange" size="small">
+              {{ getMatchCountInChunk(match) }} 次
+            </a-tag>
           </div>
           <div class="match-content" v-html="getFormattedContent(match)"></div>
         </div>
       </div>
 
       <!-- 空状态 -->
-      <a-empty v-if="matches.length === 0" description="暂无匹配内容" />
+      <a-empty v-if="!file || file.matches.length === 0" description="暂无匹配内容" />
     </div>
   </a-modal>
 </template>
@@ -48,31 +51,11 @@ import { FolderOpenOutlined } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
 import { computed } from 'vue';
 
-interface SearchHit {
-  id: string;
-  fileName: string;
-  fileType: string;
-  content: string;
-  pageRange?: string;
-  totalPages?: number;
-  chunkIndex: number;
-  totalChunks: number;
-  filePath: string;
-  createdAt: number;
-  _formatted?: {
-    content?: string;
-    fileName?: string;
-    [key: string]: any;
-  };
-  _matchesPosition?: Record<string, Array<{ start: number; length: number }>>;
-}
+import type { GroupedFile, SearchHit } from '@/types';
 
 interface Props {
   open: boolean;
-  fileName: string;
-  filePath: string;
-  matches: SearchHit[];
-  totalPages?: number;
+  file: GroupedFile | null;
 }
 
 interface Emits {
@@ -88,8 +71,18 @@ const visible = computed({
 });
 
 const modalTitle = computed(() => {
-  return `"${props.fileName}" 的搜索结果`;
+  return props.file ? `"${props.file.fileName}" 的搜索结果` : '搜索结果';
 });
+
+/**
+ * 获取chunk中的实际匹配次数
+ */
+const getMatchCountInChunk = (match: SearchHit): number => {
+  if (match._matchesPosition?.content && Array.isArray(match._matchesPosition.content)) {
+    return match._matchesPosition.content.length;
+  }
+  return 1;
+};
 
 /**
  * 获取格式化的内容（带高亮）
@@ -98,20 +91,17 @@ const getFormattedContent = (match: SearchHit): string => {
   if (match._formatted?.content) {
     return match._formatted.content;
   }
-  // 降级方案
-  const maxLength = 300;
-  if (match.content.length <= maxLength) {
-    return match.content;
-  }
-  return match.content.substring(0, maxLength) + '...';
+  return '无法加载内容片段';
 };
 
 /**
  * 在文件管理器中显示文件
  */
 const handleShowInFolder = async () => {
+  if (!props.file) return;
+
   try {
-    const result = await window.api.shell.showItemInFolder(props.filePath);
+    const result = await window.api.shell.showItemInFolder(props.file.filePath);
     if (!result.success) {
       message.error(result.error || '无法打开文件夹');
     }

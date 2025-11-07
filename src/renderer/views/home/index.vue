@@ -4,7 +4,7 @@
       <div class="search-box" :class="{ 'search-box-hover': isHovered }">
         <a-input
           v-model:value="searchQuery"
-          placeholder="搜索文档内容..."
+          placeholder="搜索..."
           class="search-input"
           size="large"
           @mouseenter="isHovered = true"
@@ -13,12 +13,15 @@
         >
           <template #suffix>
             <a-button type="text" :loading="searching" class="search-button" @click="handleSearch">
-              <search-outlined />
+              <img :src="candyIcon" alt="search" class="search-icon" />
             </a-button>
           </template>
         </a-input>
       </div>
     </div>
+
+    <!-- 拖拽提示 -->
+    <div v-if="!hasSearched" class="drag-hint">可直接拖拽文件到页面进行上传</div>
 
     <!-- 搜索结果 -->
     <div v-if="hasSearched" class="results-container">
@@ -41,7 +44,6 @@
             v-for="file in groupedFiles"
             :key="file.fileName"
             :file="file"
-            @click="handleOpenFileDetail"
             @show-in-folder="handleShowInFolder"
           />
         </div>
@@ -61,53 +63,16 @@
 
       <a-empty v-else description="未找到相关结果" class="empty-state" />
     </div>
-
-    <!-- 搜索详情弹窗 -->
-    <search-detail-modal
-      v-model:open="detailModalVisible"
-      :file-name="selectedFile?.fileName || ''"
-      :file-path="selectedFile?.filePath || ''"
-      :matches="selectedFile?.matches || []"
-      :total-pages="selectedFile?.totalPages"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { SearchOutlined } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
 import { computed } from 'vue';
 
-import SearchDetailModal from '@/components/SearchDetailModal.vue';
+import candyIcon from '@/assets/icons/美食-棒棒糖.svg';
 import SearchResultItem from '@/components/SearchResultItem.vue';
-
-interface SearchHit {
-  id: string;
-  fileName: string;
-  fileType: string;
-  content: string;
-  pageRange?: string;
-  totalPages?: number;
-  chunkIndex: number;
-  totalChunks: number;
-  filePath: string;
-  createdAt: number;
-  _formatted?: {
-    content?: string;
-    fileName?: string;
-    [key: string]: any;
-  };
-  _matchesPosition?: Record<string, Array<{ start: number; length: number }>>;
-}
-
-interface GroupedFile {
-  fileName: string;
-  filePath: string;
-  fileType: string;
-  totalPages?: number;
-  matchCount: number;
-  matches: SearchHit[];
-}
+import type { GroupedFile, SearchHit } from '@/types';
 
 const searchQuery = ref('');
 const isHovered = ref(false);
@@ -134,10 +99,6 @@ const groupedFiles = computed(() => {
   const end = start + pageSize.value;
   return allGroupedFiles.value.slice(start, end);
 });
-
-// 详情弹窗
-const detailModalVisible = ref(false);
-const selectedFile = ref<GroupedFile | null>(null);
 
 /**
  * 执行搜索
@@ -193,6 +154,19 @@ const handleSearch = async () => {
 };
 
 /**
+ * 计算单个chunk中的实际匹配次数
+ */
+const getChunkMatchCount = (hit: SearchHit): number => {
+  // 如果有 _matchesPosition 信息，使用它来统计
+  if (hit._matchesPosition?.content && Array.isArray(hit._matchesPosition.content)) {
+    return hit._matchesPosition.content.length;
+  }
+
+  // 降级方案：至少有1个匹配（因为这个chunk被返回了）
+  return 1;
+};
+
+/**
  * 按文件名分组
  */
 const groupFilesByName = (hits: SearchHit[]) => {
@@ -211,7 +185,11 @@ const groupFilesByName = (hits: SearchHit[]) => {
     }
 
     const file = fileMap.get(hit.fileName)!;
-    file.matchCount++;
+
+    // 累加这个chunk中的实际匹配次数
+    const chunkMatches = getChunkMatchCount(hit);
+    file.matchCount += chunkMatches;
+
     file.matches.push(hit);
   });
 
@@ -219,8 +197,18 @@ const groupFilesByName = (hits: SearchHit[]) => {
   allGroupedFiles.value = Array.from(fileMap.values()).sort((a, b) => b.matchCount - a.matchCount);
   totalFileCount.value = allGroupedFiles.value.length;
 
+  console.log(
+    '文件分组统计:',
+    allGroupedFiles.value.map((f) => ({
+      fileName: f.fileName,
+      chunks: f.matches.length,
+      totalMatches: f.matchCount,
+    })),
+  );
+
   // 重置到第一页
   currentPage.value = 1;
+  console.log('file:', allGroupedFiles.value);
 };
 
 /**
@@ -232,14 +220,6 @@ const handlePageChange = (page: number) => {
 
   // 滚动到顶部
   document.querySelector('.results-container')?.scrollTo({ top: 0, behavior: 'smooth' });
-};
-
-/**
- * 打开文件详情（显示所有匹配）
- */
-const handleOpenFileDetail = (file: GroupedFile) => {
-  selectedFile.value = file;
-  detailModalVisible.value = true;
 };
 
 /**
@@ -288,15 +268,19 @@ const handleShowInFolder = async (filePath: string) => {
 }
 
 .search-wrapper.search-active {
-  margin-bottom: 24px;
+  margin-bottom: 8px;
+}
+
+.drag-hint {
+  margin-top: 16px;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.45);
+  text-align: center;
+  transition: opacity 0.3s ease;
 }
 
 .search-box {
   transition: all 0.3s ease;
-}
-
-.search-box-hover {
-  transform: translateY(-2px);
 }
 
 .search-input {
@@ -326,27 +310,38 @@ const handleShowInFolder = async (filePath: string) => {
 }
 
 .search-button {
-  width: 36px;
-  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  cursor: pointer;
 }
 
-.search-button:hover {
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+.search-button:hover,
+.search-button:focus,
+.search-button:active {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.search-icon {
+  width: 32px;
+  height: 32px;
+  transition: transform 0.3s ease;
+  margin: 2px 4px 0 0;
+}
+
+.search-button:hover .search-icon {
+  transform: scale(1.15);
 }
 
 /* 搜索结果容器 */
 .results-container {
   width: 100%;
-  max-width: 800px;
+  max-width: 720px;
   padding: 0 24px;
   flex: 1;
   overflow-y: auto;

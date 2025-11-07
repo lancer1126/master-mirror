@@ -21,7 +21,7 @@
           :min="1024"
           :max="65535"
           :step="1"
-          style="width: 120px"
+          style="width: 100px"
           @blur="saveMeilisearchPort"
         />
       </div>
