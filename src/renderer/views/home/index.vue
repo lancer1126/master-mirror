@@ -21,10 +21,9 @@
           </template>
         </a-input>
       </div>
+      <!-- 拖拽提示 -->
+      <div v-if="!hasSearched" class="drag-hint">可直接拖拽文件到页面进行上传</div>
     </div>
-
-    <!-- 拖拽提示 -->
-    <div v-if="!hasSearched" class="drag-hint">可直接拖拽文件到页面进行上传</div>
 
     <!-- 搜索结果 -->
     <div v-if="hasSearched" class="results-container">
@@ -32,8 +31,8 @@
         <a-spin size="large" tip="搜索中..." />
       </div>
 
-      <div v-else-if="groupedFiles.length > 0" class="results-content">
-        <!-- 搜索信息 -->
+      <template v-else-if="groupedFiles.length > 0">
+        <!-- 搜索信息 - 固定在顶部 -->
         <div class="results-header">
           <span class="results-count">
             找到 {{ groupedFiles.length }} 个文件，共 {{ totalResults }} 处匹配，用时
@@ -41,17 +40,20 @@
           </span>
         </div>
 
-        <!-- 文件列表（按文件分组） -->
-        <div class="results-list">
-          <search-result-item
-            v-for="file in groupedFiles"
-            :key="file.fileName"
-            :file="file"
-            @show-in-folder="handleShowInFolder"
-          />
+        <!-- 可滚动的内容区域 -->
+        <div class="results-content">
+          <!-- 文件列表（按文件分组） -->
+          <div class="results-list">
+            <search-result-item
+              v-for="file in groupedFiles"
+              :key="file.fileName"
+              :file="file"
+              @show-in-folder="handleShowInFolder"
+            />
+          </div>
         </div>
 
-        <!-- 分页 -->
+        <!-- 分页 - 固定在底部 -->
         <div v-if="totalPages > 1" class="pagination-wrapper">
           <a-pagination
             v-model:current="currentPage"
@@ -62,7 +64,7 @@
             @change="handlePageChange"
           />
         </div>
-      </div>
+      </template>
 
       <a-empty v-else description="未找到相关结果" class="empty-state" />
     </div>
@@ -111,7 +113,7 @@ const handleSearch = async () => {
   const query = searchQuery.value.trim();
 
   if (!query) {
-    message.warning('请输入搜索关键词');
+    clearSearch();
     return;
   }
 
@@ -223,7 +225,7 @@ const handlePageChange = (page: number) => {
   currentPage.value = page;
 
   // 滚动到顶部
-  document.querySelector('.results-container')?.scrollTo({ top: 0, behavior: 'smooth' });
+  document.querySelector('.results-content')?.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 /**
@@ -239,6 +241,19 @@ const handleShowInFolder = async (filePath: string) => {
     console.error('打开文件夹失败:', error);
     message.error('打开文件夹失败');
   }
+};
+
+/**
+ * 清空搜索结果
+ */
+const clearSearch = () => {
+  hasSearched.value = false;
+  searching.value = false;
+  currentPage.value = 1;
+  searchResults.value = [];
+  totalResults.value = 0;
+  allGroupedFiles.value = [];
+  totalFileCount.value = 0;
 };
 </script>
 
@@ -364,8 +379,10 @@ const handleShowInFolder = async (filePath: string) => {
   max-width: 720px;
   padding: 0 24px;
   flex: 1;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   animation: fadeIn 0.3s ease;
+  overflow: hidden; /* 防止整体滚动 */
 }
 
 @keyframes fadeIn {
@@ -386,20 +403,24 @@ const handleShowInFolder = async (filePath: string) => {
   padding: 60px 0;
 }
 
-.results-content {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
+/* 搜索信息 - 固定在顶部 */
 .results-header {
-  padding: 8px 0;
+  padding: 12px 0;
   border-bottom: 1px solid #f0f0f0;
+  background: #f5f5f5;
+  flex-shrink: 0; /* 不收缩 */
 }
 
 .results-count {
   font-size: 14px;
   color: rgba(0, 0, 0, 0.45);
+}
+
+/* 可滚动内容区域 */
+.results-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 0;
 }
 
 .results-list {
@@ -408,10 +429,14 @@ const handleShowInFolder = async (filePath: string) => {
   gap: 8px;
 }
 
+/* 分页 - 固定在底部 */
 .pagination-wrapper {
   display: flex;
   justify-content: center;
-  padding: 24px 0;
+  padding: 16px 0;
+  border-top: 1px solid #f0f0f0;
+  background: #f5f5f5;
+  flex-shrink: 0; /* 不收缩 */
 }
 
 .empty-state {
@@ -419,21 +444,21 @@ const handleShowInFolder = async (filePath: string) => {
 }
 
 /* 滚动条样式 */
-.results-container::-webkit-scrollbar {
+.results-content::-webkit-scrollbar {
   width: 6px;
 }
 
-.results-container::-webkit-scrollbar-track {
+.results-content::-webkit-scrollbar-track {
   background: #f1f1f1;
   border-radius: 3px;
 }
 
-.results-container::-webkit-scrollbar-thumb {
+.results-content::-webkit-scrollbar-thumb {
   background: #888;
   border-radius: 3px;
 }
 
-.results-container::-webkit-scrollbar-thumb:hover {
+.results-content::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
 </style>

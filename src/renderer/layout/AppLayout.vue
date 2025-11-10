@@ -53,22 +53,18 @@ import { useNotifications } from '@/composables/useNotifications';
 
 const router = useRouter();
 const route = useRoute();
+const { uploadFileObjects } = useFileUpload(); // 使用上传 Hook
+const { error: showError } = useNotifications();
+const settingsVisible = ref(false); // 弹窗状态
+const uploadVisible = ref(false);
+const isGlobalDragging = ref(false); // 全局拖拽状态
+
+let dragCounter = 0; // 用于处理嵌套元素的拖拽事件
+let meilisearchErrorId: string | null = null;
+let unsubscribeMeilisearch: (() => void) | null = null;
 
 // 判断是否在归档页
 const isArchivePage = computed(() => route.path === '/archive');
-// 弹窗状态
-const settingsVisible = ref(false);
-const uploadVisible = ref(false);
-
-// 全局拖拽状态
-const isGlobalDragging = ref(false);
-let dragCounter = 0; // 用于处理嵌套元素的拖拽事件
-
-// 使用上传 Hook
-const { uploadFileObjects } = useFileUpload();
-
-const { error: showError } = useNotifications();
-let meilisearchErrorId: string | null = null;
 
 /**
  * 显示设置弹窗
@@ -95,46 +91,6 @@ const goToArchive = () => {
     router.push('/archive');
   }
 };
-
-// 监听 Meilisearch 状态
-onMounted(async () => {
-  // 1. 先主动查询一次状态（处理组件挂载前已发送的消息）
-  try {
-    const status = await window.api.meilisearch.getStatus();
-    if (status && status.status === 'error') {
-      meilisearchErrorId = showError('搜索服务启动失败', status.message);
-    }
-  } catch (error) {
-    console.error('获取 Meilisearch 状态失败:', error);
-  }
-
-  // 2. 然后监听后续的状态变化
-  const unsubscribe = window.ipcRenderer.onMeilisearchStatus((status) => {
-    if (status.status === 'error') {
-      // 如果已有错误通知，先移除
-      if (meilisearchErrorId) {
-        const { removeNotification } = useNotifications();
-        removeNotification(meilisearchErrorId);
-      }
-      // 显示新的错误通知
-      meilisearchErrorId = showError('搜索服务启动失败', status.message);
-    } else if (status.status === 'success' && meilisearchErrorId) {
-      // 成功时移除错误通知
-      const { removeNotification } = useNotifications();
-      removeNotification(meilisearchErrorId);
-      meilisearchErrorId = null;
-    }
-  });
-
-  // 组件卸载时取消监听
-  onUnmounted(() => {
-    unsubscribe();
-  });
-});
-
-/**
- * 全局拖拽事件处理（仅在非Modal区域）
- */
 
 // 全局拖拽进入
 const handleGlobalDragEnter = (e: DragEvent) => {
@@ -198,6 +154,44 @@ const handleGlobalDrop = async (e: DragEvent) => {
     showSuccess: true,
   });
 };
+
+// 监听 Meilisearch 状态
+onMounted(async () => {
+  // 1. 先主动查询一次状态（处理组件挂载前已发送的消息）
+  try {
+    const status = await window.api.meilisearch.getStatus();
+    if (status && status.status === 'error') {
+      meilisearchErrorId = showError('搜索服务启动失败', status.message);
+    }
+  } catch (error) {
+    console.error('获取 Meilisearch 状态失败:', error);
+  }
+
+  // 2. 然后监听后续的状态变化
+  unsubscribeMeilisearch = window.ipcRenderer.onMeilisearchStatus((status) => {
+    if (status.status === 'error') {
+      // 如果已有错误通知，先移除
+      if (meilisearchErrorId) {
+        const { removeNotification } = useNotifications();
+        removeNotification(meilisearchErrorId);
+      }
+      // 显示新的错误通知
+      meilisearchErrorId = showError('搜索服务启动失败', status.message);
+    } else if (status.status === 'success' && meilisearchErrorId) {
+      // 成功时移除错误通知
+      const { removeNotification } = useNotifications();
+      removeNotification(meilisearchErrorId);
+      meilisearchErrorId = null;
+    }
+  });
+});
+
+// 组件卸载时取消监听
+onUnmounted(() => {
+  if (unsubscribeMeilisearch) {
+    unsubscribeMeilisearch();
+  }
+});
 </script>
 
 <style scoped>

@@ -134,7 +134,7 @@ async function searchDocuments(
       'createdAt',
     ],
     attributesToCrop: ['content'], // 启用内容裁剪和高亮
-    cropLength: 200, // 裁剪长度：匹配位置前后的字符数（中文约100字，英文约200词）
+    cropLength: 50, // 裁剪长度：匹配位置前后的字符数
     cropMarker: '...', // 裁剪标记
     attributesToHighlight: ['content', 'fileName'],
     highlightPreTag: '<mark>', // 高亮开始标签
