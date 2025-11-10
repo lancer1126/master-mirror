@@ -1,6 +1,9 @@
 <template>
   <div class="home-container" :class="{ 'has-results': hasSearched }">
     <div class="search-wrapper" :class="{ 'search-active': hasSearched }">
+      <div v-if="!hasSearched" class="logo-wrapper">
+        <img :src="logoSearch" alt="logo" class="logo-image" />
+      </div>
       <div class="search-box" :class="{ 'search-box-hover': isHovered }">
         <a-input
           v-model:value="searchQuery"
@@ -71,6 +74,7 @@ import { message } from 'ant-design-vue';
 import { computed } from 'vue';
 
 import candyIcon from '@/assets/icons/美食-棒棒糖.svg';
+import logoSearch from '@/assets/logo/悠闲.svg';
 import SearchResultItem from '@/components/SearchResultItem.vue';
 import type { GroupedFile, SearchHit } from '@/types';
 
@@ -251,7 +255,7 @@ const handleShowInFolder = async (filePath: string) => {
 
 .home-container:not(.has-results) {
   /* 居中时：使用 calc 将搜索框推到中间 */
-  padding-top: calc(50vh - 100px);
+  padding-top: calc(57vh - 100px);
 }
 
 .home-container.has-results {
@@ -259,7 +263,23 @@ const handleShowInFolder = async (filePath: string) => {
   padding-top: 40px;
 }
 
+.logo-wrapper {
+  position: absolute;
+  bottom: calc(100% + 24px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+}
+
+.logo-image {
+  max-width: 240px;
+  width: 60%;
+  min-width: 160px;
+}
+
 .search-wrapper {
+  position: relative;
   width: 100%;
   max-width: 600px;
   padding: 0 24px;

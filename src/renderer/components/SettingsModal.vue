@@ -4,7 +4,7 @@
       <!-- 文件保存位置设置项 -->
       <div class="setting-item">
         <div class="setting-info">
-          <div class="setting-name">索引文件保存位置</div>
+          <div class="setting-name">数据保存位置</div>
           <div class="setting-value">{{ formData.searchIndexPath || '未设置' }}</div>
         </div>
         <a-button type="primary" @click="selectDirectory"> 修改 </a-button>

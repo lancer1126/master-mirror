@@ -62,7 +62,11 @@
   },
   "build": {
     "appId": "fun.lance.mastermirror",
-    "productName": "MasterMirror"
+    "productName": "MasterMirror",
+    "electronLanguages": [
+      "zh-CN",
+      "en-US"
+    ]
   },
   "pnpm": {
     "onlyBuiltDependencies": [

@@ -10,7 +10,6 @@
       <div class="header-content">
         <div class="logo"></div>
         <div class="header-actions">
-          <a-button v-if="!isHomePage" class="action-btn" @click="goToHome">主页</a-button>
           <a-button class="action-btn" @click="showUpload">上传</a-button>
           <a-button class="action-btn" @click="goToArchive">归档</a-button>
           <a-button type="text" class="action-btn" @click="showSettings">
@@ -55,9 +54,8 @@ import { useNotifications } from '@/composables/useNotifications';
 const router = useRouter();
 const route = useRoute();
 
-// 判断是否在主页
-const isHomePage = computed(() => route.path === '/');
-
+// 判断是否在归档页
+const isArchivePage = computed(() => route.path === '/archive');
 // 弹窗状态
 const settingsVisible = ref(false);
 const uploadVisible = ref(false);
@@ -87,17 +85,15 @@ const showUpload = () => {
 };
 
 /**
- * 跳转到主页页面
- */
-const goToHome = () => {
-  router.push('/');
-};
-
-/**
- * 跳转到归档页面
+ * 切换归档页面
+ * 如果不在归档页则进入归档页，如果已在归档页则跳转至首页
  */
 const goToArchive = () => {
-  router.push('/archive');
+  if (isArchivePage.value) {
+    router.push('/');
+  } else {
+    router.push('/archive');
+  }
 };
 
 // 监听 Meilisearch 状态
