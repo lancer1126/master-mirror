@@ -63,18 +63,11 @@ import type { UploadProps } from 'ant-design-vue';
 import { message } from 'ant-design-vue';
 import { computed, ref, watch } from 'vue';
 
-import { type FileProgress, useFileUpload } from '@/composables/useFileUpload';
+import { useFileUpload } from '@/composables/useFileUpload';
+import type { FileProgress, UploadModalEmits, UploadModalProps } from '@/types';
 
-interface Props {
-  open: boolean;
-}
-
-interface Emits {
-  (e: 'update:open', value: boolean): void;
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
+const props = defineProps<UploadModalProps>();
+const emit = defineEmits<UploadModalEmits>();
 
 const visible = computed({
   get: () => props.open,

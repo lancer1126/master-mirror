@@ -9,8 +9,8 @@ import { APP_CONFIG, APP_INFO, MEILISEARCH_CONFIG } from '../constants';
  * 设置存储接口
  */
 export interface StoreSchema {
-  /** 搜索索引文件保存路径 */
-  searchIndexPath: string;
+  /** 数据保存路径（包含数据库和搜索索引） */
+  dataPath: string;
   /** 是否使用独立的 Meilisearch 可执行文件 */
   useCustomMeilisearch: boolean;
   /** 自定义 Meilisearch 可执行文件路径 */
@@ -20,18 +20,18 @@ export interface StoreSchema {
 }
 
 /**
- * 获取默认的搜索索引路径
- * 优先使用 D:\Home\MasterMirror\data（如果 D 盘存在）
- * 否则使用用户数据目录下的 search-index
+ * 获取默认的数据保存路径
+ * 优先使用 D:\Home\MasterMirror\（如果 D 盘存在）
+ * 否则使用用户数据目录下的 APP_CONFIG.DEFAULT_DIR
  */
-function getDefaultSearchIndexPath(): string {
+function getDefaultDataPath(): string {
   // 检查 D 盘是否存在（Windows）
   if (process.platform === 'win32' && existsSync(APP_CONFIG.D_DRIVE)) {
-    return join(APP_CONFIG.D_DRIVE, APP_CONFIG.HOME_DIR, APP_INFO.NAME, APP_CONFIG.DATA_DIR);
+    return join(APP_CONFIG.D_DRIVE, APP_CONFIG.HOME_DIR, APP_INFO.NAME);
   }
 
   // 其他平台或 D 盘不存在时，使用用户数据目录
-  return join(app.getPath('userData'), APP_CONFIG.SEARCH_INDEX_DIR);
+  return join(app.getPath('userData'), APP_CONFIG.DEFAULT_DIR);
 }
 
 /**
@@ -49,7 +49,7 @@ function getOrCreateStore(): Store<StoreSchema> {
   if (!store) {
     store = new Store<StoreSchema>({
       defaults: {
-        searchIndexPath: getDefaultSearchIndexPath(),
+        dataPath: getDefaultDataPath(),
         useCustomMeilisearch: false,
         customMeilisearchPath: '',
         meilisearchPort: MEILISEARCH_CONFIG.DEFAULT_PORT,

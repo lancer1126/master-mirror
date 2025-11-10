@@ -66,18 +66,18 @@ class MeilisearchService {
    */
   private getDataPath(): string {
     const store = getStore();
-    const searchIndexPath = store.get('searchIndexPath');
+    const dataPath = store.get('dataPath');
 
-    // 在 searchIndexPath 下创建 meilisearch 子目录
-    const dataPath = join(searchIndexPath, 'meilisearch');
+    // 在 dataPath 下创建 meilisearch 子目录
+    const meilisearchPath = join(dataPath, 'meilisearch');
 
     // 确保目录存在
-    if (!existsSync(dataPath)) {
-      mkdirSync(dataPath, { recursive: true });
-      console.log('[Meilisearch] 创建数据目录:', dataPath);
+    if (!existsSync(meilisearchPath)) {
+      mkdirSync(meilisearchPath, { recursive: true });
+      console.log('[Meilisearch] 创建数据目录:', meilisearchPath);
     }
 
-    return dataPath;
+    return meilisearchPath;
   }
 
   /**
@@ -314,7 +314,6 @@ export function setupMeilisearchStatusListener(mainWindow: Electron.BrowserWindo
   mainWindow.webContents.on('did-finish-load', () => {
     if (meilisearchStatus && mainWindow) {
       mainWindow.webContents.send('meilisearch:status', meilisearchStatus);
-      console.log('[App] 发送 Meilisearch 状态到渲染进程:', meilisearchStatus.status);
     }
   });
 }

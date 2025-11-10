@@ -51,19 +51,10 @@ import { FolderOpenOutlined } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
 import { computed } from 'vue';
 
-import type { GroupedFile, SearchHit } from '@/types';
+import type { SearchDetailModalEmits, SearchDetailModalProps, SearchHit } from '@/types';
 
-interface Props {
-  open: boolean;
-  file: GroupedFile | null;
-}
-
-interface Emits {
-  (e: 'update:open', value: boolean): void;
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
+const props = defineProps<SearchDetailModalProps>();
+const emit = defineEmits<SearchDetailModalEmits>();
 
 const visible = computed({
   get: () => props.open,

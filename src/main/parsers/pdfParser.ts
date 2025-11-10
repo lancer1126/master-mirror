@@ -3,7 +3,6 @@
  * 使用 pdfjs-dist 进行分页解析
  */
 
-import { createHash } from 'crypto';
 import { readFile } from 'fs/promises';
 import { basename } from 'path';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
@@ -15,6 +14,7 @@ import type {
   ParseProgress,
   ParseResult,
 } from '../types/parser';
+import { generateChunkId } from '../utils';
 
 // 默认配置
 const DEFAULT_CHUNK_SIZE = 50; // 每个分块50页
@@ -67,10 +67,9 @@ export class PdfParser implements IFileParser {
       const totalChunks = Math.min(Math.ceil(totalPages / chunkSize), maxChunks);
       const chunks: ParsedChunk[] = [];
 
-      console.log(`[PdfParser] 开始解析: ${fileName}, 总页数: ${totalPages}, 分块数: ${totalChunks}`);
-
-      // 生成文件唯一标识（使用文件路径的MD5哈希，避免中文字符）
-      const fileHash = this.generateFileHash(filePath);
+      console.log(
+        `[PdfParser] 开始解析: ${fileName}, 总页数: ${totalPages}, 分块数: ${totalChunks}`,
+      );
 
       // 按分块处理
       for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
@@ -92,7 +91,7 @@ export class PdfParser implements IFileParser {
 
         // 创建文档分块（使用哈希值作为ID，避免中文字符）
         const chunk: ParsedChunk = {
-          id: `${fileHash}_chunk_${chunkIndex}`,
+          id: generateChunkId(filePath, chunkIndex),
           fileName,
           fileType: 'pdf',
           content: chunkText,
@@ -156,16 +155,6 @@ export class PdfParser implements IFileParser {
   }
 
   /**
-   * 生成文件哈希值（用于生成唯一且符合Meilisearch规范的ID）
-   */
-  private generateFileHash(filePath: string): string {
-    // 使用MD5哈希生成唯一标识
-    const hash = createHash('md5').update(filePath).digest('hex');
-    // 只取前16位，足够唯一
-    return hash.substring(0, 16);
-  }
-
-  /**
    * 提取指定页码范围的文本
    */
   private async extractPageRange(
@@ -202,4 +191,3 @@ export class PdfParser implements IFileParser {
     return textParts.join('\n').trim();
   }
 }
-

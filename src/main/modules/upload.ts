@@ -10,6 +10,8 @@ import { basename } from 'path';
 import { MEILISEARCH_CONFIG, PARSER_CONFIG } from '../constants';
 import type { ParsedChunk, ParseProgress } from '../parsers';
 import { parserFactory } from '../parsers';
+import { generateFileHash } from '../utils/fileUtils';
+import { dbService } from './dbService';
 import { meilisearchService } from './meilisearch';
 
 /**
@@ -57,7 +59,7 @@ async function parseAndIndexFiles(
       };
 
       console.log(`[Upload] 开始解析文件: ${fileName}`);
-      
+
       const parseResult = await parser.parse(
         filePath,
         {
@@ -84,12 +86,26 @@ async function parseAndIndexFiles(
         throw new Error('解析结果为空，没有提取到任何内容');
       }
 
-      console.log(
-        `[Upload] 文件解析成功: ${fileName}, 分块数: ${parseResult.chunks.length}`,
-      );
+      console.log(`[Upload] 文件解析成功: ${fileName}, 分块数: ${parseResult.chunks.length}`);
 
       // 3. 批量索引到 Meilisearch
       await indexChunks(index, parseResult.chunks, fileName, mainWindow, meilisearchClient);
+
+      // 4. 保存上传记录到数据库
+      try {
+        const fileId = generateFileHash(filePath);
+        const uploadTime = formatDateTime(new Date());
+        dbService.addUploadRecord({
+          fileId,
+          fileName,
+          filePath,
+          uploadTime,
+        });
+        console.log(`[Upload] 上传记录已保存: ${fileName}`);
+      } catch (dbError: any) {
+        console.error(`[Upload] 保存上传记录失败: ${fileName}`, dbError);
+        // 不影响主流程，继续执行
+      }
 
       success.push(fileName);
       console.log(`[Upload] 文件处理完成: ${fileName}`);
@@ -137,7 +153,7 @@ async function indexChunks(
 
     console.log(`[Upload] 准备索引批次 ${Math.floor(i / batchSize) + 1}:`, {
       batchSize: batch.length,
-      firstId: batch[0]?.id
+      firstId: batch[0]?.id,
     });
 
     // 发送索引进度
@@ -207,6 +223,19 @@ function getSupportedFileTypes(): string[] {
 }
 
 /**
+ * 格式化日期时间为 yyyy-MM-dd HH:mm:ss
+ */
+function formatDateTime(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+/**
  * 注册文件上传相关的 IPC 处理程序
  */
 export function registerUploadHandlers(): void {
@@ -245,4 +274,3 @@ export function registerUploadHandlers(): void {
     }
   });
 }
-

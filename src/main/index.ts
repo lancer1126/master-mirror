@@ -4,6 +4,7 @@ import { join } from 'path';
 
 import { APP_INFO, WINDOW } from './constants';
 import { configRelateWindow, registerConfigHandlers } from './modules/appConfig';
+import { registerDatabaseHandlers } from './modules/database';
 import {
   initializeMeilisearch,
   registerMeilisearchHandlers,
@@ -12,6 +13,7 @@ import {
 } from './modules/meilisearch';
 import { registerSearchHandlers } from './modules/search';
 import { registerUploadHandlers } from './modules/upload';
+import { dbService } from './modules/dbService';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -75,6 +77,9 @@ if (isSingleInstance) {
     // 设置应用 ID（Windows）
     electronApp.setAppUserModelId(APP_INFO.APP_ID);
 
+    // 初始化数据库
+    dbService.initialize();
+
     // 注册配置相关的 IPC 处理程序
     registerConfigHandlers();
     // 注册文件上传相关的 IPC 处理程序
@@ -83,6 +88,8 @@ if (isSingleInstance) {
     registerSearchHandlers();
     // 注册 Meilisearch 相关的 IPC 处理程序
     registerMeilisearchHandlers();
+    // 注册数据库相关的 IPC 处理程序
+    registerDatabaseHandlers();
 
     // 开发环境下，F12 打开开发者工具
     app.on('browser-window-created', (_, window) => {
@@ -124,6 +131,11 @@ if (isSingleInstance) {
 
   // 设置应用退出时的清理逻辑
   setupMeilisearchCleanup();
+
+  // 应用退出时关闭数据库
+  app.on('before-quit', () => {
+    dbService.close();
+  });
 } else {
   app.quit();
 }

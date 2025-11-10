@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "electron-vite dev",
     "dev:web": "vite dev",
-    "build": "electron-vite build"
+    "build": "electron-vite build",
+    "postinstall": "node ./scripts/postinstall-native.cjs"
   },
   "dependencies": {
     "@ant-design/icons-vue": "^7.0.1",
@@ -39,7 +40,7 @@
     "@vue/eslint-config-prettier": "^10.2.0",
     "@vue/eslint-config-typescript": "^14.5.0",
     "@vue/tsconfig": "^0.8.1",
-    "electron": "^39.0.0",
+    "electron": "^38.6.0",
     "electron-builder": "^26.0.12",
     "electron-vite": "^4.0.0",
     "eslint": "^9.34.0",
@@ -70,6 +71,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "better-sqlite3",
       "electron",
       "esbuild"
     ]

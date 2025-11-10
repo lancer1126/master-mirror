@@ -5,7 +5,7 @@
       <div class="setting-item">
         <div class="setting-info">
           <div class="setting-name">数据保存位置</div>
-          <div class="setting-value">{{ formData.searchIndexPath || '未设置' }}</div>
+          <div class="setting-value">{{ formData.dataPath || '未设置' }}</div>
         </div>
         <a-button type="primary" @click="selectDirectory"> 修改 </a-button>
       </div>
@@ -55,16 +55,10 @@
 </template>
 
 <script setup lang="ts">
-interface Props {
-  open: boolean;
-}
+import type { SettingsModalEmits, SettingsModalProps } from '@/types';
 
-interface Emits {
-  (e: 'update:open', value: boolean): void;
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
+const props = defineProps<SettingsModalProps>();
+const emit = defineEmits<SettingsModalEmits>();
 
 const visible = computed({
   get: () => props.open,
@@ -72,7 +66,7 @@ const visible = computed({
 });
 
 const formData = reactive({
-  searchIndexPath: '',
+  dataPath: '',
   useCustomMeilisearch: false,
   customMeilisearchPath: '',
   meilisearchPort: 7700,
@@ -84,11 +78,11 @@ const defaultPath = ref('');
 const loadSettings = async () => {
   try {
     const settings = await window.api.settings.getAll();
-    formData.searchIndexPath = settings.searchIndexPath || '';
+    formData.dataPath = settings.dataPath || '';
     formData.useCustomMeilisearch = settings.useCustomMeilisearch || false;
     formData.customMeilisearchPath = settings.customMeilisearchPath || '';
     formData.meilisearchPort = settings.meilisearchPort || 7700;
-    defaultPath.value = settings.searchIndexPath || '';
+    defaultPath.value = settings.dataPath || '';
   } catch (error) {
     console.error('加载设置失败:', error);
   }
@@ -100,8 +94,8 @@ const selectDirectory = async () => {
     const path = await window.api.dialog.selectDirectory();
     if (path) {
       // 立即保存设置
-      await window.api.settings.set('searchIndexPath', path);
-      formData.searchIndexPath = path;
+      await window.api.settings.set('dataPath', path);
+      formData.dataPath = path;
     }
   } catch (error) {
     console.error('选择目录失败:', error);

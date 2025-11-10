@@ -1,7 +1,7 @@
 import { ElectronAPI } from '@electron-toolkit/preload';
 
 interface Settings {
-  searchIndexPath: string;
+  dataPath: string;
   useCustomMeilisearch: boolean;
   customMeilisearchPath: string;
   meilisearchPort: number;
@@ -97,11 +97,25 @@ interface API {
   meilisearch: {
     getStatus: () => Promise<MeilisearchStatus | null>;
   };
+  database: {
+    getUploadRecords: () => Promise<{ success: boolean; data?: UploadRecord[]; error?: string }>;
+    getUploadRecordById: (
+      fileId: string,
+    ) => Promise<{ success: boolean; data?: UploadRecord; error?: string }>;
+    deleteUploadRecord: (fileId: string) => Promise<{ success: boolean; error?: string }>;
+  };
 }
 
 interface MeilisearchStatus {
   status: 'success' | 'error';
   message: string;
+}
+
+interface UploadRecord {
+  fileId: string;
+  fileName: string;
+  filePath: string;
+  uploadTime: string;
 }
 
 interface ipcRenderer {

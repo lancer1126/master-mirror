@@ -8,13 +8,11 @@
  */
 export const APP_CONFIG = {
   /** 搜索索引目录名称 */
-  SEARCH_INDEX_DIR: 'search-index',
+  DEFAULT_DIR: 'UserData',
   /** D 盘根目录（Windows） */
   D_DRIVE: 'D:\\',
   /** Home 目录名称 */
   HOME_DIR: 'Home',
-  /** 应用数据目录名称 */
-  DATA_DIR: 'data',
 } as const;
 
 /**

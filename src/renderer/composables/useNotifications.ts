@@ -1,23 +1,6 @@
 import { computed, reactive } from 'vue';
 
-/**
- * 消息类型
- */
-export type NotificationType = 'info' | 'success' | 'warning' | 'error';
-
-/**
- * 消息项接口
- */
-export interface NotificationItem {
-  id: string;
-  type: NotificationType;
-  title: string;
-  description?: string;
-  closable?: boolean;
-  autoClose?: boolean;
-  duration?: number;
-  expanded?: boolean;
-}
+import type { NotificationItem } from '@/types';
 
 /**
  * 消息状态

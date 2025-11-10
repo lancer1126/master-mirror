@@ -40,6 +40,12 @@ const api = {
   meilisearch: {
     getStatus: () => ipcRenderer.invoke('meilisearch:getStatus'),
   },
+  // 数据库 API
+  database: {
+    getUploadRecords: () => ipcRenderer.invoke('db:getUploadRecords'),
+    getUploadRecordById: (fileId: string) => ipcRenderer.invoke('db:getUploadRecordById', fileId),
+    deleteUploadRecord: (fileId: string) => ipcRenderer.invoke('db:deleteUploadRecord', fileId),
+  },
 };
 
 /**

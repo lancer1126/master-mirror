@@ -17,11 +17,9 @@
 </template>
 
 <script setup lang="ts">
-interface Props {
-  visible: boolean;
-}
+import type { UploadOverlayProps } from '@/types';
 
-defineProps<Props>();
+defineProps<UploadOverlayProps>();
 </script>
 
 <style scoped>

@@ -6,27 +6,7 @@
 import { message } from 'ant-design-vue';
 import { ref } from 'vue';
 
-export interface FileProgress {
-  fileName: string;
-  current: number;
-  total: number;
-  percentage: number;
-  status: 'parsing' | 'indexing' | 'completed' | 'failed';
-  message?: string;
-}
-
-export interface UploadOptions {
-  /** 是否显示loading提示 */
-  showLoading?: boolean;
-  /** 是否显示成功消息 */
-  showSuccess?: boolean;
-  /** 上传前的钩子 */
-  onBefore?: () => void;
-  /** 上传完成的钩子 */
-  onComplete?: (success: string[], failed: Array<{ fileName: string; error: string }>) => void;
-  /** 进度更新的钩子 */
-  onProgress?: (progress: FileProgress) => void;
-}
+import type { FileProgress, UploadOptions } from '@/types';
 
 /**
  * 文件上传 Hook

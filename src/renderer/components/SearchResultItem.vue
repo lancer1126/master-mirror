@@ -25,20 +25,12 @@
 import { FolderOpenOutlined } from '@ant-design/icons-vue';
 import { computed, ref } from 'vue';
 
-import type { GroupedFile } from '@/types';
+import type { SearchResultItemEmits, SearchResultItemProps } from '@/types';
 
 import SearchDetailModal from './SearchDetailModal.vue';
 
-interface Props {
-  file: GroupedFile;
-}
-
-interface Emits {
-  (e: 'showInFolder', filePath: string): void;
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
+const props = defineProps<SearchResultItemProps>();
+const emit = defineEmits<SearchResultItemEmits>();
 
 // 详情弹窗状态
 const detailModalVisible = ref(false);
