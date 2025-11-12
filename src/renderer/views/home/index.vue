@@ -1,7 +1,7 @@
 <template>
   <div class="home-container" :class="{ 'has-results': hasSearched }">
     <div class="search-wrapper" :class="{ 'search-active': hasSearched }">
-      <div v-if="!hasSearched" class="logo-wrapper">
+      <div v-show="!hasSearched" class="logo-wrapper">
         <img :src="logoSearch" alt="logo" class="logo-image" />
       </div>
       <div class="search-box" :class="{ 'search-box-hover': isHovered }">
@@ -22,7 +22,7 @@
         </a-input>
       </div>
       <!-- 拖拽提示 -->
-      <div v-if="!hasSearched" class="drag-hint">可直接拖拽文件到页面进行上传</div>
+      <div v-show="!hasSearched" class="drag-hint">可直接拖拽文件到页面进行上传</div>
     </div>
 
     <!-- 搜索结果 -->
@@ -285,12 +285,15 @@ const clearSearch = () => {
   transform: translateX(-50%);
   display: flex;
   justify-content: center;
+  transition: opacity 0.3s ease;
 }
 
 .logo-image {
   max-width: 240px;
   width: 60%;
   min-width: 160px;
+  /* 预加载优化 */
+  image-rendering: -webkit-optimize-contrast;
 }
 
 .search-wrapper {

@@ -2,13 +2,15 @@
   <div class="archive-container">
     <!-- 页面标题 -->
     <div class="archive-header">
-      <h2 class="archive-title">上传归档</h2>
-      <a-button type="primary" :loading="loading" @click="refreshRecords">
-        <template #icon>
-          <reload-outlined />
-        </template>
-        刷新
-      </a-button>
+      <div class="header-left">
+        <h2 class="archive-title">文件归档</h2>
+        <a-button type="text" :loading="loading" @click="refreshRecords">
+          <template #icon>
+            <reload-outlined />
+          </template>
+          刷新
+        </a-button>
+      </div>
     </div>
 
     <!-- 内容区域 -->
@@ -43,14 +45,19 @@
               </a-tooltip>
             </template>
 
+            <!-- 上传时间列 -->
+            <template v-else-if="column.key === 'uploadTime'">
+              <span class="upload-time">{{ record.uploadTime }}</span>
+            </template>
+
             <!-- 操作列 -->
             <template v-else-if="column.key === 'action'">
-              <a-space>
+              <a-space :size="2">
                 <a-button type="link" size="small" @click="handleShowInFolder(record.filePath)">
                   <template #icon>
                     <folder-open-outlined />
                   </template>
-                  打开文件夹
+                  定位
                 </a-button>
                 <a-popconfirm
                   title="确定要删除这条记录吗？"
@@ -113,7 +120,7 @@ const columns: TableColumnsType = [
   {
     title: '操作',
     key: 'action',
-    width: 220,
+    width: 180,
     fixed: 'right',
   },
 ];
@@ -194,36 +201,33 @@ onMounted(() => {
 <style scoped>
 .archive-container {
   height: 100%;
+  width: 75%;
   display: flex;
   flex-direction: column;
-  padding: 24px;
-  background-color: #f5f5f5;
+  margin: 0 auto;
 }
 
 .archive-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.archive-header .header-left {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
-  padding: 16px 24px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  gap: 16px;
 }
 
 .archive-header .archive-title {
   margin: 0;
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 500;
   color: #262626;
 }
 
 .archive-content {
   flex: 1;
-  background: #fff;
-  border-radius: 8px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 0;
   overflow: auto;
 }
 
@@ -250,7 +254,7 @@ onMounted(() => {
 }
 
 .file-name-cell .file-name {
-  font-weight: 500;
+  font-weight: 400;
   color: #262626;
 }
 
@@ -261,5 +265,52 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.upload-time {
+  color: #8c8c8c;
+  font-size: 13px;
+}
+
+/* 表格扁平化样式 */
+:deep(.ant-table-wrapper) {
+  padding: 0;
+}
+
+:deep(.ant-table) {
+  background: transparent;
+}
+
+:deep(.ant-table-thead > tr > th) {
+  background: transparent !important;
+  border-bottom: 1px solid #e8e8e8;
+  font-weight: 500;
+  padding: 12px 16px;
+  color: #8c8c8c;
+  font-size: 13px;
+}
+
+:deep(.ant-table-tbody > tr > td) {
+  border-bottom: 1px solid #f0f0f0;
+  padding: 14px 16px;
+  background: transparent !important;
+}
+
+:deep(.ant-table-tbody > tr:hover > td) {
+  background: #fafafa !important;
+}
+
+/* 固定列样式 */
+:deep(.ant-table-cell-fix-right) {
+  background: transparent !important;
+}
+
+:deep(.ant-table-tbody > tr:hover .ant-table-cell-fix-right) {
+  background: #fafafa !important;
+}
+
+:deep(.ant-pagination) {
+  padding: 16px 24px;
+  margin: 0;
 }
 </style>

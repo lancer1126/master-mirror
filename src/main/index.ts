@@ -5,6 +5,7 @@ import { join } from 'path';
 import { APP_INFO, WINDOW } from './constants';
 import { configRelateWindow, registerConfigHandlers } from './modules/appConfig';
 import { registerDatabaseHandlers } from './modules/database';
+import { dbService } from './modules/dbService';
 import {
   initializeMeilisearch,
   registerMeilisearchHandlers,
@@ -13,7 +14,6 @@ import {
 } from './modules/meilisearch';
 import { registerSearchHandlers } from './modules/search';
 import { registerUploadHandlers } from './modules/upload';
-import { dbService } from './modules/dbService';
 
 let mainWindow: BrowserWindow | null = null;
 
