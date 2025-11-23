@@ -19,6 +19,9 @@ class MeilisearchService {
   /** Meilisearch 可执行文件路径 */
   private readonly executablePath: string;
 
+  /** 状态缓存（用于窗口加载完成后发送） */
+  private status: { status: 'success' | 'error'; message: string } | null = null;
+
   constructor() {
     // 初始化时先使用默认路径，实际启动时会检查是否使用自定义路径
     const execName =
@@ -84,7 +87,39 @@ class MeilisearchService {
   /**
    * 启动 Meilisearch 服务
    */
-  async start(): Promise<void> {
+  async initialize(mainWindow: Electron.BrowserWindow | null): Promise<void> {
+    try {
+      await this.start();
+      console.log('[App] Meilisearch 服务启动成功');
+
+      this.status = {
+        status: 'success',
+        message: 'Meilisearch 服务已启动',
+      };
+
+      // 发送状态通知
+      if (mainWindow && !mainWindow.webContents.isLoading()) {
+        mainWindow.webContents.send('meilisearch:status', this.status);
+      }
+    } catch (error: any) {
+      console.error('[App] Meilisearch 服务启动失败:', error);
+
+      this.status = {
+        status: 'error',
+        message: `Meilisearch 启动失败: ${error.message}`,
+      };
+
+      // 发送状态通知
+      if (mainWindow && !mainWindow.webContents.isLoading()) {
+        mainWindow.webContents.send('meilisearch:status', this.status);
+      }
+    }
+  }
+
+  /**
+   * 内部启动逻辑
+   */
+  private async start(): Promise<void> {
     if (this.isRunning) {
       console.log('[Meilisearch] 服务已在运行中');
       return;
@@ -228,9 +263,9 @@ class MeilisearchService {
   }
 
   /**
-   * 获取服务状态
+   * 获取服务状态对象
    */
-  getStatus(): { isRunning: boolean; port: number; host: string } {
+  getStatusObject(): { isRunning: boolean; port: number; host: string } {
     const port = this.getPort();
     return {
       isRunning: this.isRunning,
@@ -255,10 +290,10 @@ class MeilisearchService {
   }
 
   /**
-   * 获取最后一次启动的错误信息
+   * 获取缓存的状态消息
    */
-  getLastError(): string | null {
-    return null; // 暂时返回 null，可以在启动失败时缓存错误信息
+  getCachedStatus(): { status: 'success' | 'error'; message: string } | null {
+    return this.status;
   }
 }
 
@@ -268,62 +303,17 @@ class MeilisearchService {
 const meilisearchService = new MeilisearchService();
 
 /**
- * Meilisearch 状态缓存（用于窗口加载完成后发送）
- */
-let meilisearchStatus: { status: 'success' | 'error'; message: string } | null = null;
-
-/**
- * 初始化 Meilisearch 服务（后台启动）
- * @param mainWindow 主窗口实例
- */
-export function initializeMeilisearch(mainWindow: Electron.BrowserWindow): void {
-  // 后台启动 Meilisearch 服务
-  meilisearchService
-    .start()
-    .then(() => {
-      console.log('[App] Meilisearch 服务启动成功');
-      // 缓存状态
-      meilisearchStatus = {
-        status: 'success',
-        message: 'Meilisearch 服务已启动',
-      };
-      // 如果窗口已经加载完成，立即发送
-      if (mainWindow && mainWindow.webContents.isLoading() === false) {
-        mainWindow.webContents.send('meilisearch:status', meilisearchStatus);
-      }
-    })
-    .catch((error) => {
-      console.error('[App] Meilisearch 服务启动失败:', error);
-      // 缓存状态
-      meilisearchStatus = {
-        status: 'error',
-        message: `Meilisearch 启动失败: ${error.message}`,
-      };
-      // 如果窗口已经加载完成，立即发送
-      if (mainWindow && mainWindow.webContents.isLoading() === false) {
-        mainWindow.webContents.send('meilisearch:status', meilisearchStatus);
-      }
-    });
-}
-
-/**
  * 设置窗口的 Meilisearch 状态监听
  * 在窗口加载完成后自动发送缓存的状态
  * @param mainWindow 主窗口实例
  */
 export function setupMeilisearchStatusListener(mainWindow: Electron.BrowserWindow): void {
   mainWindow.webContents.on('did-finish-load', () => {
-    if (meilisearchStatus && mainWindow) {
-      mainWindow.webContents.send('meilisearch:status', meilisearchStatus);
+    const status = meilisearchService.getCachedStatus();
+    if (status && mainWindow) {
+      mainWindow.webContents.send('meilisearch:status', status);
     }
   });
-}
-
-/**
- * 获取当前 Meilisearch 状态
- */
-export function getMeilisearchStatus(): { status: 'success' | 'error'; message: string } | null {
-  return meilisearchStatus;
 }
 
 /**
@@ -339,7 +329,7 @@ export async function stopMeilisearch(): Promise<void> {
 export function registerMeilisearchHandlers(): void {
   // 注册 Meilisearch 状态查询
   ipcMain.handle('meilisearch:getStatus', () => {
-    return getMeilisearchStatus();
+    return meilisearchService.getCachedStatus();
   });
 }
 

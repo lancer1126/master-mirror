@@ -10,7 +10,13 @@
     :mask-style="maskStyle"
     wrap-class-name="init-modal-wrap"
   >
-    <div class="config-init-content">
+    <!-- 加载中状态 -->
+    <div v-if="saving" class="loading-container">
+      <a-spin size="large" tip="正在初始化服务，请稍候..." />
+    </div>
+
+    <!-- 配置表单 -->
+    <div v-else class="config-init-content">
       <!-- 数据保存位置 -->
       <div class="config-item">
         <div class="config-item-header">
@@ -55,9 +61,7 @@
 
       <!-- 操作按钮 -->
       <div class="config-actions">
-        <a-button type="primary" :loading="saving" @click="handleSave" :disabled="!canSave">
-          保存
-        </a-button>
+        <a-button type="primary" @click="handleSave" :disabled="!canSave"> 保存 </a-button>
       </div>
     </div>
   </a-modal>
@@ -170,6 +174,9 @@ const handleSave = async () => {
     await window.api.settings.set('dataPath', formData.dataPath.trim());
     await window.api.settings.set('meilisearchPath', formData.meilisearchPath.trim());
 
+    // 延迟 2 秒，显示加载状态
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
     message.success('配置保存成功');
     emit('config-complete');
     visible.value = false;
@@ -211,6 +218,13 @@ watch(
 <style scoped>
 .config-init-content {
   padding: 8px 0;
+}
+
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 300px; /* 保持与内容区大致相同的高度 */
 }
 
 .config-item {

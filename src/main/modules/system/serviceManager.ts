@@ -1,24 +1,27 @@
-import { BrowserWindow,ipcMain } from 'electron';
+import { BrowserWindow, ipcMain } from 'electron';
 
-import { initializeMeilisearch } from '../search/meilisearch';
+import { dbService } from '../database/dbService';
+import { meilisearchService, setupMeilisearchStatusListener } from '../search/meilisearch';
 import { checkConfigComplete } from './appConfig';
 
-let meilisearchInitialized = false;
+let servicesInitialized = false;
 
 /**
  * 启动服务
  */
 export function startServices(mainWindow: BrowserWindow | null): void {
-  if (meilisearchInitialized || !mainWindow) {
+  if (servicesInitialized || !mainWindow) {
     return;
   }
 
   const isConfigComplete = checkConfigComplete();
   if (isConfigComplete) {
-    meilisearchInitialized = true;
-    // 配置完整，启动 Meilisearch 服务
-    initializeMeilisearch(mainWindow);
-
+    // 初始化数据库服务
+    dbService.initialize();
+    // 启动 Meilisearch 服务
+    meilisearchService.initialize(mainWindow);
+    
+    servicesInitialized = true;
     // 初始化搜索索引（延迟执行，等待 Meilisearch 启动）
     setTimeout(async () => {
       try {
@@ -37,6 +40,9 @@ export function startServices(mainWindow: BrowserWindow | null): void {
  * 设置服务监听器
  */
 export function setupServiceListeners(mainWindow: BrowserWindow): void {
+  // 设置 Meilisearch 状态监听器（补发机制）
+  setupMeilisearchStatusListener(mainWindow);
+
   // 等待窗口加载完成后检查配置
   mainWindow.webContents.once('did-finish-load', () => {
     // 延迟检查，确保渲染进程已准备好
@@ -51,4 +57,3 @@ export function setupServiceListeners(mainWindow: BrowserWindow): void {
     startServices(mainWindow);
   });
 }
-

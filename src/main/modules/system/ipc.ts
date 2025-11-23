@@ -7,7 +7,7 @@ import { registerConfigHandlers } from './appConfig';
 /**
  * 注册所有 IPC 处理程序
  */
-export function registerAllIPC(): void {
+export function registerIPC(): void {
   // 注册配置相关的 IPC 处理程序
   registerConfigHandlers();
   // 注册文件上传相关的 IPC 处理程序

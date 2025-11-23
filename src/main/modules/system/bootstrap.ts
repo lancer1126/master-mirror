@@ -2,8 +2,7 @@ import { electronApp, optimizer } from '@electron-toolkit/utils';
 import { app } from 'electron';
 
 import { APP_INFO } from '../../constants';
-import { dbService } from '../database/dbService';
-import { registerAllIPC } from './ipc';
+import { registerIPC } from './ipc';
 import { setupAppLifecycle } from './lifecycle';
 import { setupServiceListeners } from './serviceManager';
 import { createMainWindow } from './window';
@@ -16,11 +15,8 @@ export async function initApp(): Promise<void> {
   // 设置应用 ID（Windows）以确保正确的任务栏图标和通知
   electronApp.setAppUserModelId(APP_INFO.APP_ID);
 
-  // 初始化数据库服务
-  dbService.initialize();
-
   // 注册所有 IPC 通信处理程序
-  registerAllIPC();
+  registerIPC();
 
   // 监听窗口创建事件，在开发环境下启用 F12 调试工具
   app.on('browser-window-created', (_, window) => {
@@ -36,4 +32,3 @@ export async function initApp(): Promise<void> {
   // 设置应用程序的生命周期事件处理（如激活、退出等）
   setupAppLifecycle();
 }
-

@@ -1,9 +1,7 @@
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import Store from 'electron-store';
-import { existsSync } from 'fs';
-import { join } from 'path';
 
-import { APP_CONFIG, APP_INFO, MEILISEARCH_CONFIG } from '../../constants';
+import { MEILISEARCH_CONFIG } from '../../constants';
 
 /**
  * 设置存储接口
@@ -20,25 +18,6 @@ export interface StoreSchema {
  * 因为此时 app.setName() 可能还未执行，会导致使用错误的用户数据目录
  */
 let store: Store<StoreSchema> | null = null;
-/**
- * 获取主窗口实例
- */
-let mainWindow: BrowserWindow | null = null;
-
-/**
- * 获取默认的数据保存路径
- * 优先使用 D:\Home\MasterMirror\（如果 D 盘存在）
- * 否则使用用户数据目录下的 APP_CONFIG.DEFAULT_DIR
- */
-function getDefaultDataPath(): string {
-  // 检查 D 盘是否存在（Windows）
-  if (process.platform === 'win32' && existsSync(APP_CONFIG.D_DRIVE)) {
-    return join(APP_CONFIG.D_DRIVE, APP_CONFIG.HOME_DIR, APP_INFO.NAME);
-  }
-
-  // 其他平台或 D 盘不存在时，使用用户数据目录
-  return join(app.getPath('userData'), APP_CONFIG.DEFAULT_DIR);
-}
 
 /**
  * 获取或创建 Store 实例（懒加载）
@@ -48,20 +27,13 @@ function getOrCreateStore(): Store<StoreSchema> {
   if (!store) {
     store = new Store<StoreSchema>({
       defaults: {
-        dataPath: getDefaultDataPath(),
+        dataPath: '',
         meilisearchPath: '',
         meilisearchPort: MEILISEARCH_CONFIG.DEFAULT_PORT,
       },
     });
   }
   return store;
-}
-
-/**
- * 设置主窗口引用
- */
-export function configRelateWindow(window: BrowserWindow): void {
-  mainWindow = window;
 }
 
 /**
@@ -108,13 +80,14 @@ export function registerConfigHandlers(): void {
   });
 
   // 选择目录对话框
-  ipcMain.handle('dialog:selectDirectory', async () => {
-    if (!mainWindow) {
+  ipcMain.handle('dialog:selectDirectory', async (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!window) {
       console.error('Main window not available');
       return null;
     }
 
-    const result = await dialog.showOpenDialog(mainWindow, {
+    const result = await dialog.showOpenDialog(window, {
       properties: ['openDirectory', 'createDirectory'],
       title: '选择文件保存位置',
     });
@@ -126,8 +99,9 @@ export function registerConfigHandlers(): void {
   });
 
   // 选择 exe 可执行文件对话框
-  ipcMain.handle('dialog:selectExeFile', async () => {
-    if (!mainWindow) {
+  ipcMain.handle('dialog:selectExeFile', async (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (!window) {
       console.error('Main window not available');
       return null;
     }
@@ -140,7 +114,7 @@ export function registerConfigHandlers(): void {
           ]
         : [{ name: '所有文件', extensions: ['*'] }];
 
-    const result = await dialog.showOpenDialog(mainWindow, {
+    const result = await dialog.showOpenDialog(window, {
       properties: ['openFile'],
       title: '选择 exe 可执行文件',
       filters,

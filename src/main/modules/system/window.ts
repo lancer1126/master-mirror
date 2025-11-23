@@ -3,8 +3,6 @@ import { BrowserWindow, shell } from 'electron';
 import { join } from 'path';
 
 import { WINDOW } from '../../constants';
-import { setupMeilisearchStatusListener } from '../search/meilisearch';
-import { configRelateWindow } from './appConfig';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -26,16 +24,10 @@ export function createMainWindow(): BrowserWindow {
     },
   });
 
-  // 设置主窗口引用到配置模块
-  configRelateWindow(mainWindow);
-
   // 窗口准备好后显示
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show();
   });
-
-  // 设置 Meilisearch 状态监听器
-  setupMeilisearchStatusListener(mainWindow);
 
   // 拦截新窗口打开，使用默认浏览器
   mainWindow.webContents.setWindowOpenHandler((details) => {
