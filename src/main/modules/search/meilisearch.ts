@@ -3,8 +3,8 @@ import { app, ipcMain } from 'electron';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
-import { MEILISEARCH_CONFIG } from '../constants';
-import { getStore } from './appConfig';
+import { MEILISEARCH_CONFIG } from '../../constants';
+import { getStore } from '../system/appConfig';
 
 /**
  * Meilisearch 服务管理类
@@ -38,17 +38,18 @@ class MeilisearchService {
   }
 
   /**
-   * 获取实际使用的可执行文件路径（考虑自定义配置）
+   * 获取实际使用的可执行文件路径（使用配置中的路径）
    */
   private getExecutablePath(): string {
     const store = getStore();
-    const useCustom = store.get('useCustomMeilisearch');
-    const customPath = store.get('customMeilisearchPath');
+    const meilisearchPath = store.get('meilisearchPath');
 
-    if (useCustom && customPath && existsSync(customPath)) {
-      return customPath;
+    // 如果配置了路径且文件存在，使用配置的路径
+    if (meilisearchPath && meilisearchPath.trim() !== '' && existsSync(meilisearchPath)) {
+      return meilisearchPath;
     }
 
+    // 否则使用默认路径（兼容旧版本或未配置的情况）
     return this.executablePath;
   }
 

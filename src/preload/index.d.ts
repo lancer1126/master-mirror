@@ -2,8 +2,7 @@ import { ElectronAPI } from '@electron-toolkit/preload';
 
 interface Settings {
   dataPath: string;
-  useCustomMeilisearch: boolean;
-  customMeilisearchPath: string;
+  meilisearchPath: string;
   meilisearchPort: number;
 }
 
@@ -73,10 +72,12 @@ interface API {
     get: (key: string) => Promise<any>;
     getAll: () => Promise<Settings>;
     set: (key: string, value: any) => Promise<boolean>;
+    checkComplete: () => Promise<boolean>;
+    onConfigComplete: () => Promise<boolean>;
   };
   dialog: {
     selectDirectory: () => Promise<string | null>;
-    selectMeilisearchFile: () => Promise<string | null>;
+    selectExeFile: () => Promise<string | null>;
   };
   shell: {
     showItemInFolder: (filePath: string) => Promise<{ success: boolean; error?: string }>;

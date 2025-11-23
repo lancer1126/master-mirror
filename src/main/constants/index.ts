@@ -13,6 +13,9 @@ export const APP_CONFIG = {
   D_DRIVE: 'D:\\',
   /** Home 目录名称 */
   HOME_DIR: 'Home',
+  DATA_PATH: 'dataPath', // 数据保存路径
+  MEILISEARCH_PATH: 'meilisearchPath', // Meilisearch 可执行文件路径
+  MEILISEARCH_PORT: 'meilisearchPort', // Meilisearch 端口号
 } as const;
 
 /**

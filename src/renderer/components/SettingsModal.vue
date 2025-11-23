@@ -26,29 +26,13 @@
         />
       </div>
 
-      <!-- 使用独立 Meilisearch -->
-      <div class="setting-item-vertical">
-        <div class="setting-item-header">
-          <div class="setting-info">
-            <div class="setting-name">使用独立 Meilisearch</div>
-            <div class="setting-desc">勾选后可以使用系统中已安装的 Meilisearch 来替换内置版本</div>
-          </div>
-          <a-switch v-model:checked="formData.useCustomMeilisearch" @change="handleCustomToggle" />
+      <!-- Meilisearch 可执行文件路径 -->
+      <div class="setting-item">
+        <div class="setting-info">
+          <div class="setting-name">Meilisearch 可执行文件路径</div>
+          <div class="setting-value">{{ formData.meilisearchPath || '未设置' }}</div>
         </div>
-        <!-- 自定义路径选择（展开） -->
-        <transition name="expand">
-          <div v-show="formData.useCustomMeilisearch" class="setting-expand">
-            <div class="setting-expand-item">
-              <div class="setting-info">
-                <div class="setting-name">可执行文件路径</div>
-                <div class="setting-value">
-                  {{ formData.customMeilisearchPath || '未选择' }}
-                </div>
-              </div>
-              <a-button @click="selectMeilisearchFile">选择文件</a-button>
-            </div>
-          </div>
-        </transition>
+        <a-button type="primary" @click="selectMeilisearchFile"> 修改 </a-button>
       </div>
     </div>
   </a-modal>
@@ -67,8 +51,7 @@ const visible = computed({
 
 const formData = reactive({
   dataPath: '',
-  useCustomMeilisearch: false,
-  customMeilisearchPath: '',
+  meilisearchPath: '',
   meilisearchPort: 7700,
 });
 
@@ -79,8 +62,7 @@ const loadSettings = async () => {
   try {
     const settings = await window.api.settings.getAll();
     formData.dataPath = settings.dataPath || '';
-    formData.useCustomMeilisearch = settings.useCustomMeilisearch || false;
-    formData.customMeilisearchPath = settings.customMeilisearchPath || '';
+    formData.meilisearchPath = settings.meilisearchPath || '';
     formData.meilisearchPort = settings.meilisearchPort || 7700;
     defaultPath.value = settings.dataPath || '';
   } catch (error) {
@@ -105,22 +87,13 @@ const selectDirectory = async () => {
 // 选择 Meilisearch 可执行文件
 const selectMeilisearchFile = async () => {
   try {
-    const path = await window.api.dialog.selectMeilisearchFile();
+    const path = await window.api.dialog.selectExeFile();
     if (path) {
-      await window.api.settings.set('customMeilisearchPath', path);
-      formData.customMeilisearchPath = path;
+      await window.api.settings.set('meilisearchPath', path);
+      formData.meilisearchPath = path;
     }
   } catch (error) {
     console.error('选择文件失败:', error);
-  }
-};
-
-// 处理自定义 Meilisearch 切换
-const handleCustomToggle = async () => {
-  try {
-    await window.api.settings.set('useCustomMeilisearch', formData.useCustomMeilisearch);
-  } catch (error) {
-    console.error('保存设置失败:', error);
   }
 };
 

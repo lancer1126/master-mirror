@@ -6,27 +6,19 @@
     @dragleave.prevent="handleGlobalDragLeave"
     @drop.prevent="handleGlobalDrop"
   >
-    <header class="app-header">
-      <div class="header-content">
-        <div class="logo"></div>
-        <div class="header-actions">
-          <a-button class="action-btn" @click="showUpload">上传</a-button>
-          <a-button class="action-btn" @click="goToArchive">归档</a-button>
-          <a-button type="text" class="action-btn" @click="showSettings">
-            <template #icon>
-              <setting-outlined />
-            </template>
-          </a-button>
-        </div>
-      </div>
-    </header>
+    <!-- 顶部导航栏 -->
+    <app-header @upload="showUpload" @archive="goToArchive" @settings="showSettings" />
 
     <!-- 通知列表 -->
     <notification-list />
 
+    <!-- 主要内容区域 -->
     <main class="app-main">
       <router-view />
     </main>
+
+    <!-- 配置初始化弹窗 -->
+    <init-modal v-model:open="configInitVisible" @config-complete="handleConfigComplete" />
 
     <!-- 设置弹窗 -->
     <settings-modal v-model:open="settingsVisible" />
@@ -40,16 +32,17 @@
 </template>
 
 <script setup lang="ts">
-import { SettingOutlined } from '@ant-design/icons-vue';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+import InitModal from '@/components/InitModal.vue';
 import NotificationList from '@/components/NotificationList.vue';
 import SettingsModal from '@/components/SettingsModal.vue';
 import UploadModal from '@/components/UploadModal.vue';
 import UploadOverlay from '@/components/UploadOverlay.vue';
 import { useFileUpload } from '@/composables/useFileUpload';
 import { useNotifications } from '@/composables/useNotifications';
+import AppHeader from '@/layout/components/AppHeader.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -57,6 +50,7 @@ const { uploadFileObjects } = useFileUpload(); // 使用上传 Hook
 const { error: showError } = useNotifications();
 const settingsVisible = ref(false); // 弹窗状态
 const uploadVisible = ref(false);
+const configInitVisible = ref(false); // 配置初始化弹窗状态
 const isGlobalDragging = ref(false); // 全局拖拽状态
 
 let dragCounter = 0; // 用于处理嵌套元素的拖拽事件
@@ -155,8 +149,31 @@ const handleGlobalDrop = async (e: DragEvent) => {
   });
 };
 
+// 检查配置是否完整
+const checkConfig = async () => {
+  try {
+    const isComplete = await window.api.settings.checkComplete();
+    if (!isComplete) {
+      configInitVisible.value = true;
+    }
+  } catch (error) {
+    console.error('检查配置失败:', error);
+    // 如果检查失败，也显示配置对话框
+    configInitVisible.value = true;
+  }
+};
+
+// 配置完成后的处理
+const handleConfigComplete = async () => {
+  // 通知主进程配置已完成，尝试启动服务
+  await window.api.settings.onConfigComplete();
+};
+
 // 监听 Meilisearch 状态
 onMounted(async () => {
+  // 首先检查配置
+  await checkConfig();
+
   // 1. 先主动查询一次状态（处理组件挂载前已发送的消息）
   try {
     const status = await window.api.meilisearch.getStatus();
@@ -200,41 +217,6 @@ onUnmounted(() => {
   height: 100vh;
   display: flex;
   flex-direction: column;
-}
-
-.app-header {
-  background: #f5f5f5;
-  padding: 0 32px;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 64px;
-}
-
-.logo {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1890ff;
-}
-
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.action-btn {
-  font-size: 14px;
-  color: rgba(0, 0, 0, 0.85);
-  transition: all 0.3s;
-}
-
-.action-btn:hover {
-  color: #1890ff;
-  background: rgba(24, 144, 255, 0.06);
 }
 
 .app-main {

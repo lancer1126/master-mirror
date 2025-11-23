@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron';
 import { MeiliSearch } from 'meilisearch';
 
-import { MEILISEARCH_CONFIG } from '../constants';
+import { MEILISEARCH_CONFIG } from '../../constants';
 import { meilisearchService } from './meilisearch';
 
 /**

@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "electron-vite dev",
     "dev:web": "vite dev",
-    "build": "electron-vite build",
+    "compile": "electron-vite build",
+    "build:win": "pnpm compile && electron-builder --win",
     "postinstall": "node ./scripts/postinstall-native.cjs"
   },
   "dependencies": {
@@ -67,7 +68,28 @@
     "electronLanguages": [
       "zh-CN",
       "en-US"
-    ]
+    ],
+    "directories": {
+      "output": "dist_electron"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "MasterMirror"
+    }
   },
   "pnpm": {
     "onlyBuiltDependencies": [

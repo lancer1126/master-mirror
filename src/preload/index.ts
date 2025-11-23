@@ -14,11 +14,18 @@ const api = {
     get: (key: string) => ipcRenderer.invoke('settings:get', key),
     getAll: () => ipcRenderer.invoke('settings:getAll'),
     set: (key: string, value: any) => ipcRenderer.invoke('settings:set', key, value),
+    checkComplete: () => ipcRenderer.invoke('settings:checkComplete'),
+    getMissingKeys: () => ipcRenderer.invoke('settings:getMissingKeys'),
+    onConfigComplete: () => {
+      // 通知主进程配置已完成
+      ipcRenderer.send('config:complete');
+      return ipcRenderer.invoke('settings:onConfigComplete');
+    },
   },
   // 对话框 API
   dialog: {
     selectDirectory: () => ipcRenderer.invoke('dialog:selectDirectory'),
-    selectMeilisearchFile: () => ipcRenderer.invoke('dialog:selectMeilisearchFile'),
+    selectExeFile: () => ipcRenderer.invoke('dialog:selectExeFile'),
   },
   // Shell API
   shell: {

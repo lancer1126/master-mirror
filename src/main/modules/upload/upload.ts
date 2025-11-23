@@ -7,12 +7,12 @@ import { BrowserWindow, ipcMain } from 'electron';
 import { MeiliSearch } from 'meilisearch';
 import { basename } from 'path';
 
-import { MEILISEARCH_CONFIG, PARSER_CONFIG } from '../constants';
-import type { ParsedChunk, ParseProgress } from '../parsers';
-import { parserFactory } from '../parsers';
-import { generateFileHash } from '../utils';
-import { dbService } from './dbService';
-import { meilisearchService } from './meilisearch';
+import { MEILISEARCH_CONFIG, PARSER_CONFIG } from '../../constants';
+import type { ParsedChunk, ParseProgress } from '../../parsers';
+import { parserFactory } from '../../parsers';
+import { generateFileHash } from '../../utils';
+import { dbService } from '../database/dbService';
+import { meilisearchService } from '../search/meilisearch';
 
 /**
  * 解析并索引文件

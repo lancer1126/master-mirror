@@ -6,8 +6,8 @@ import Database from 'better-sqlite3';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
-import type { UploadRecord } from '../types/database';
-import { getStore } from './appConfig';
+import type { UploadRecord } from '../../types/database';
+import { getStore } from '../system/appConfig';
 
 class DatabaseService {
   private db: Database.Database | null = null;
