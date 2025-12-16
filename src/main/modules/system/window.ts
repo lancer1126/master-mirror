@@ -16,6 +16,7 @@ export function createMainWindow(): BrowserWindow {
     height: WINDOW.DEFAULT_HEIGHT,
     show: false,
     autoHideMenuBar: true, // 隐藏菜单栏
+    icon: join(__dirname, '../../resources/youxian.ico'),
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       sandbox: false,

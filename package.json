@@ -65,6 +65,7 @@
   "build": {
     "appId": "fun.lance.mastermirror",
     "productName": "MasterMirror",
+    "icon": "resources/youxian.ico",
     "electronLanguages": [
       "zh-CN",
       "en-US"
@@ -73,6 +74,7 @@
       "output": "dist_electron"
     },
     "win": {
+      "icon": "resources/youxian.ico",
       "target": [
         {
           "target": "nsis",

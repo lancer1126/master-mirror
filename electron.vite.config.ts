@@ -14,6 +14,11 @@ import VueDevTools from 'vite-plugin-vue-devtools';
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
+    build: {
+      rollupOptions: {
+        external: ['@/resources'],
+      },
+    },
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
