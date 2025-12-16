@@ -2,7 +2,7 @@
   <div class="home-container" :class="{ 'has-results': hasSearched }">
     <div class="search-wrapper" :class="{ 'search-active': hasSearched }">
       <div v-show="!hasSearched" class="logo-wrapper">
-        <img :src="logoSearch" alt="logo" class="logo-image" />
+        <img :src="logoSearch" alt="logo" class="logo-image" draggable="false" />
       </div>
       <div class="search-box" :class="{ 'search-box-hover': isHovered }">
         <a-input
