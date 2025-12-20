@@ -1,7 +1,7 @@
 import { electronApp, optimizer } from '@electron-toolkit/utils';
+import { APP_INFO } from '@shared/config';
 import { app } from 'electron';
 
-import { APP_INFO } from '../../constants';
 import { registerIPC } from './ipc';
 import { setupAppLifecycle } from './lifecycle';
 import { setupServiceListeners } from './serviceManager';

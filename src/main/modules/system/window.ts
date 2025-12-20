@@ -1,8 +1,7 @@
 import { is } from '@electron-toolkit/utils';
+import { WINDOW } from '@shared/config';
 import { BrowserWindow, shell } from 'electron';
 import { join } from 'path';
-
-import { WINDOW } from '../../constants';
 
 let mainWindow: BrowserWindow | null = null;
 

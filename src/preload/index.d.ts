@@ -68,6 +68,9 @@ interface API {
   minimize: () => void;
   maximize: () => void;
   close: () => void;
+  app: {
+    getInfo: () => Promise<{ name: string; appId: string }>;
+  };
   settings: {
     get: (key: string) => Promise<any>;
     getAll: () => Promise<Settings>;
@@ -97,6 +100,7 @@ interface API {
   };
   meilisearch: {
     getStatus: () => Promise<MeilisearchStatus | null>;
+    download: (dataPath: string) => Promise<{ success: boolean; path?: string; message?: string }>;
   };
   database: {
     getUploadRecords: () => Promise<{ success: boolean; data?: UploadRecord[]; error?: string }>;
@@ -125,6 +129,7 @@ interface ipcRenderer {
   on: (channel: string, listener: (...args: any[]) => void) => () => void;
   removeAllListeners: (channel: string) => void;
   onMeilisearchStatus: (callback: (status: MeilisearchStatus) => void) => () => void;
+  onMeilisearchDownloadProgress: (callback: (progress: number) => void) => () => void;
   onFileParseProgress: (callback: (progress: ParseProgress) => void) => () => void;
   getPathForFile: (file: File) => string;
 }

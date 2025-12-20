@@ -9,6 +9,10 @@ const api = {
   minimize: () => ipcRenderer.send('minimize-window'),
   maximize: () => ipcRenderer.send('maximize-window'),
   close: () => ipcRenderer.send('close-window'),
+  // 应用信息 API
+  app: {
+    getInfo: () => ipcRenderer.invoke('app:getInfo'),
+  },
   // 设置相关 API
   settings: {
     get: (key: string) => ipcRenderer.invoke('settings:get', key),
@@ -46,6 +50,7 @@ const api = {
   // Meilisearch 状态 API
   meilisearch: {
     getStatus: () => ipcRenderer.invoke('meilisearch:getStatus'),
+    download: (dataPath: string) => ipcRenderer.invoke('meilisearch:download', dataPath),
   },
   // 数据库 API
   database: {
@@ -84,6 +89,14 @@ const ipc = {
     ipcRenderer.on('meilisearch:status', listener);
     return () => {
       ipcRenderer.removeListener('meilisearch:status', listener);
+    };
+  },
+  // 监听 Meilisearch 下载进度
+  onMeilisearchDownloadProgress: (callback: (progress: number) => void) => {
+    const listener = (_: any, progress: number) => callback(progress);
+    ipcRenderer.on('meilisearch:download-progress', listener);
+    return () => {
+      ipcRenderer.removeListener('meilisearch:download-progress', listener);
     };
   },
   // 监听文件解析进度

@@ -15,6 +15,7 @@ export default defineConfig({
       '@': resolve('src/renderer'),
       '@renderer': resolve('src/renderer'),
       '@main': resolve('src/main'),
+      '@shared': resolve('src/shared'),
     },
   },
   plugins: [

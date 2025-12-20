@@ -1,6 +1,6 @@
+import { APP_INFO } from '@shared/config';
 import { app } from 'electron';
 
-import { APP_INFO } from './constants';
 import { initApp } from './modules/system/bootstrap';
 
 // 设置应用名称

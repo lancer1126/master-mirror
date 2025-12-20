@@ -3,11 +3,11 @@
  * 负责文件解析和索引到 Meilisearch
  */
 
+import { MEILISEARCH_CONFIG, PARSER_CONFIG } from '@shared/config';
 import { BrowserWindow, ipcMain } from 'electron';
 import { MeiliSearch } from 'meilisearch';
 import { basename } from 'path';
 
-import { MEILISEARCH_CONFIG, PARSER_CONFIG } from '../../constants';
 import type { ParsedChunk, ParseProgress } from '../../parsers';
 import { parserFactory } from '../../parsers';
 import { generateFileHash } from '../../utils';

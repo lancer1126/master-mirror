@@ -1,10 +1,13 @@
+import { DOWNLOAD_CONFIG, MEILISEARCH_CONFIG } from '@shared/config';
 import { ChildProcess, spawn } from 'child_process';
-import { app, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
-import { MEILISEARCH_CONFIG } from '../../constants';
 import { getStore } from '../system/appConfig';
+import { fileDownloader } from '../system/downloader';
+
+const DEFAULT_EXEC_NAME = 'meilisearch-windows-amd64.exe';
 
 /**
  * Meilisearch 服务管理类
@@ -189,14 +192,14 @@ class MeilisearchService {
       // 监听标准输出
       this.process.stdout?.on('data', (data) => {
         const output = data.toString();
-        // console.log('[Meilisearch]', output.trim());
+        console.log('[Meilisearch]', output.trim());
         checkStartupSuccess(output);
       });
 
       // 监听标准错误输出（Meilisearch 主要使用 stderr 输出日志）
       this.process.stderr?.on('data', (data) => {
         const output = data.toString();
-        // console.log('[Meilisearch]', output.trim());
+        console.log('[Meilisearch]', output.trim());
         checkStartupSuccess(output);
       });
 
@@ -330,6 +333,27 @@ export function registerMeilisearchHandlers(): void {
   // 注册 Meilisearch 状态查询
   ipcMain.handle('meilisearch:getStatus', () => {
     return meilisearchService.getCachedStatus();
+  });
+
+  // 注册 Meilisearch 自动下载
+  ipcMain.handle('meilisearch:download', async (_, dataPath: string) => {
+    const mainWindow = BrowserWindow.getAllWindows()[0];
+    const downloadUrl = `${DOWNLOAD_CONFIG.HOST}/meilisearch-stable-windows-amd64.gz`;
+    const saveDir = join(dataPath, 'bin');
+
+    try {
+      const execPath = await fileDownloader.downloadFile({
+        url: downloadUrl,
+        saveDir: saveDir,
+        fileName: DEFAULT_EXEC_NAME, 
+        mainWindow: mainWindow,
+        progressChannel: 'meilisearch:download-progress',
+      });
+      return { success: true, path: execPath };
+    } catch (error: any) {
+      console.error('[Meilisearch] 下载失败:', error);
+      return { success: false, message: error.message };
+    }
   });
 }
 

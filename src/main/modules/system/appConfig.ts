@@ -1,7 +1,6 @@
+import { APP_INFO, MEILISEARCH_CONFIG } from '@shared/config';
 import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import Store from 'electron-store';
-
-import { MEILISEARCH_CONFIG } from '../../constants';
 
 /**
  * 设置存储接口
@@ -77,6 +76,14 @@ export function registerConfigHandlers(): void {
   ipcMain.handle('settings:set', (_event, key: keyof StoreSchema, value: any) => {
     getOrCreateStore().set(key, value);
     return true;
+  });
+
+  // 获取应用信息
+  ipcMain.handle('app:getInfo', () => {
+    return {
+      name: APP_INFO.NAME,
+      appId: APP_INFO.APP_ID,
+    };
   });
 
   // 选择目录对话框

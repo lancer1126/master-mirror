@@ -30,3 +30,5 @@ out
 
 src/renderer/auto-imports.d.ts
 src/renderer/components.d.ts
+
+.env
