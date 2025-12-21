@@ -43,21 +43,5 @@ export function registerDatabaseHandlers(): void {
       };
     }
   });
-
-  // 删除上传记录
-  ipcMain.handle('db:deleteUploadRecord', async (_, fileId: string) => {
-    try {
-      dbService.deleteUploadRecord(fileId);
-      return {
-        success: true,
-      };
-    } catch (error: any) {
-      console.error('[DB] 删除上传记录失败:', error);
-      return {
-        success: false,
-        error: error.message || '删除上传记录失败',
-      };
-    }
-  });
 }
 

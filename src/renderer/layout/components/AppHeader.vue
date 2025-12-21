@@ -3,7 +3,7 @@
     <div class="header-content">
       <div class="logo"></div>
       <div class="header-actions">
-        <a-button class="action-btn" @click="handleUpload">上传</a-button>
+        <a-button class="action-btn" @click="handleUpload">收录</a-button>
         <a-button class="action-btn" @click="handleArchive">归档</a-button>
         <a-button type="text" class="action-btn" @click="handleSettings">
           <template #icon>

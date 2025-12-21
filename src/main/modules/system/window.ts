@@ -1,5 +1,5 @@
 import { is } from '@electron-toolkit/utils';
-import { WINDOW } from '@shared/config';
+import { DEV_SERVER, WINDOW } from '@shared/config';
 import { BrowserWindow, shell } from 'electron';
 import { join } from 'path';
 
@@ -36,9 +36,10 @@ export function createMainWindow(): BrowserWindow {
   });
 
   // 加载页面
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
-    // 开发环境：加载 Vite 开发服务器
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL']);
+  if (is.dev) {
+    // 开发环境：优先使用环境变量，否则使用配置的默认值
+    const devServerUrl = process.env['ELECTRON_RENDERER_URL'] || DEV_SERVER.URL;
+    mainWindow.loadURL(devServerUrl);
   } else {
     // 生产环境：加载构建后的 HTML
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'));

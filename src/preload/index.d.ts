@@ -26,6 +26,7 @@ interface ParseProgress {
 
 interface SearchHit {
   id: string;
+  fileId?: string;
   fileName: string;
   fileType: string;
   content: string;
@@ -88,6 +89,7 @@ interface API {
   upload: {
     files: (filePaths: string[]) => Promise<UploadResult>;
     getSupportedTypes: () => Promise<{ success: boolean; data?: string[]; error?: string }>;
+    delete: (fileId: string) => Promise<{ success: boolean; error?: string }>;
   };
   search: {
     init: () => Promise<{ success: boolean; error?: string }>;
@@ -107,7 +109,6 @@ interface API {
     getUploadRecordById: (
       fileId: string,
     ) => Promise<{ success: boolean; data?: UploadRecord; error?: string }>;
-    deleteUploadRecord: (fileId: string) => Promise<{ success: boolean; error?: string }>;
   };
 }
 

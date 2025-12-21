@@ -39,6 +39,7 @@ const api = {
   upload: {
     files: (filePaths: string[]) => ipcRenderer.invoke('file:upload', filePaths),
     getSupportedTypes: () => ipcRenderer.invoke('file:getSupportedTypes'),
+    delete: (fileId: string) => ipcRenderer.invoke('file:delete', fileId),
   },
   // 搜索 API
   search: {
@@ -56,7 +57,6 @@ const api = {
   database: {
     getUploadRecords: () => ipcRenderer.invoke('db:getUploadRecords'),
     getUploadRecordById: (fileId: string) => ipcRenderer.invoke('db:getUploadRecordById', fileId),
-    deleteUploadRecord: (fileId: string) => ipcRenderer.invoke('db:deleteUploadRecord', fileId),
   },
 };
 

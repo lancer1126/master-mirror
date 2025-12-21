@@ -19,7 +19,7 @@
         <p class="ant-upload-drag-icon">
           <inbox-outlined />
         </p>
-        <p class="ant-upload-text">点击或拖拽文件到此区域上传</p>
+        <p class="ant-upload-text">点击或拖拽文件到此区域进行收录</p>
         <p class="ant-upload-hint">支持单个或批量上传。支持的格式：PDF</p>
       </a-upload-dragger>
 

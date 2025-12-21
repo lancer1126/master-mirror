@@ -34,6 +34,7 @@ export function startServices(mainWindow: BrowserWindow | null): void {
         console.error('[App] 搜索索引初始化失败:', error);
       } finally {
         console.log('[App] 服务初始化完成');
+        console.log('=======================================');
       }
     }, 3000);
   } else {

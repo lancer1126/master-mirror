@@ -8,6 +8,8 @@
 export interface ParsedChunk {
   /** 分块ID（唯一标识） */
   id: string;
+  /** 文件ID（用于快速过滤和删除，与数据库 fileId 一致，由上传模块填充） */
+  fileId?: string;
   /** 原文件名 */
   fileName: string;
   /** 文件类型 */

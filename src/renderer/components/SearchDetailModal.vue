@@ -2,7 +2,7 @@
   <a-modal
     v-model:open="visible"
     :title="modalTitle"
-    :width="900"
+    :width="700"
     :footer="null"
     class="search-detail-modal"
     @cancel="handleCancel"
@@ -11,7 +11,6 @@
       <!-- 文件信息 -->
       <div v-if="file" class="file-info-header">
         <div class="file-title-row">
-          <h3 class="file-title">{{ file.fileName }}</h3>
           <div class="file-stats">
             <a-tag color="blue">{{ file.matchCount }} 处匹配</a-tag>
             <a-tag v-if="file.totalPages" color="default">共 {{ file.totalPages }} 页</a-tag>

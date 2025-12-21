@@ -75,10 +75,8 @@
           </div>
 
           <div class="mode-desc">
-            <p v-if="initMode === 'auto'">
-              系统将自动从云端下载适配您系统的 Meilisearch 引擎，并配置到数据目录中。
-            </p>
-            <p v-else>如果您已经手动下载了 Meilisearch 可执行文件，请选择它。<br /></p>
+            <p v-if="initMode === 'auto'">系统自动下载 Meilisearch 引擎，并配置到数据目录中。</p>
+            <p v-else>如果已经手动下载了 Meilisearch 可执行文件，请选择它。<br /></p>
           </div>
         </div>
 

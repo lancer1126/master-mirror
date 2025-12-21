@@ -331,8 +331,8 @@ export function registerMeilisearchHandlers(): void {
       }
 
       // 2. 从 assets 中筛选包含 windows-amd64 的文件
-      const windowsAsset = assets.find((asset: any) =>
-        asset.name && asset.name.includes('windows-amd64')
+      const windowsAsset = assets.find(
+        (asset: any) => asset.name && asset.name.includes('windows-amd64'),
       );
       if (!windowsAsset) {
         throw new Error('未找到 Windows AMD64 版本的 Meilisearch');
@@ -402,6 +402,49 @@ export function setupMeilisearchCleanup(): void {
       app.quit();
     }
   });
+}
+
+/**
+ * 根据文件 ID 删除索引文档
+ * @param fileId 文件ID（与数据库 fileId 一致）
+ * @returns 删除的文档数量
+ */
+export async function deleteDocumentsByFileId(fileId: string): Promise<number> {
+  const { MeiliSearch } = await import('meilisearch');
+
+  const client = new MeiliSearch({
+    host: meilisearchService.getUrl(),
+    apiKey: meilisearchService.getMasterKey(),
+  });
+
+  const index = client.index(MEILISEARCH_CONFIG.DEFAULT_INDEX);
+
+  console.log(`[Meilisearch] 开始删除文件索引: fileId=${fileId}`);
+
+  // 通过 fileId 过滤查询所有相关文档
+  const searchResult = await index.search('', {
+    filter: `fileId = "${fileId}"`,
+    limit: 10000, // 假设一个文件不会超过10000个分块
+  });
+
+  if (searchResult.hits.length === 0) {
+    console.log(`[Meilisearch] 未找到相关的索引文档`);
+    return 0;
+  }
+
+  const documentIds = searchResult.hits.map((hit: any) => hit.id);
+  console.log(`[Meilisearch] 找到 ${documentIds.length} 个索引分块，准备删除`);
+
+  // 批量删除文档
+  const deleteTask = await index.deleteDocuments(documentIds);
+  // 等待删除任务完成
+  await client.tasks.waitForTask(deleteTask.taskUid, {
+    timeout: 30000,
+    interval: 100,
+  });
+
+  console.log(`[Meilisearch] 索引删除完成，删除了 ${documentIds.length} 个分块`);
+  return documentIds.length;
 }
 
 /**

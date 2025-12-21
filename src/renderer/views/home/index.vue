@@ -22,7 +22,7 @@
         </a-input>
       </div>
       <!-- 拖拽提示 -->
-      <div v-show="!hasSearched" class="drag-hint">可直接拖拽文件到页面进行上传</div>
+      <div v-show="!hasSearched" class="drag-hint">可直接拖拽文件到页面进行收录</div>
     </div>
 
     <!-- 搜索结果 -->
@@ -36,7 +36,7 @@
         <div class="results-header">
           <span class="results-count">
             找到 {{ groupedFiles.length }} 个文件，共 {{ totalResults }} 处匹配，用时
-            {{ searchTime }}ms
+            {{ searchTime }} ms
           </span>
         </div>
 

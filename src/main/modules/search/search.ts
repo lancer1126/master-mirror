@@ -10,6 +10,8 @@ import { meilisearchService } from './meilisearch';
 export interface SearchHit {
   /** 分块ID */
   id: string;
+  /** 文件ID（用于快速过滤，索引数据中应始终存在） */
+  fileId?: string;
   /** 文件名 */
   fileName: string;
   /** 文件类型 */
@@ -92,8 +94,8 @@ async function initializeIndex(): Promise<void> {
   // 配置可搜索的字段
   await index.updateSearchableAttributes(['fileName', 'content', 'filePath']);
 
-  // 配置可过滤的字段
-  await index.updateFilterableAttributes(['fileType', 'createdAt']);
+  // 配置可过滤的字段（fileId 用于快速删除和过滤）
+  await index.updateFilterableAttributes(['fileType', 'createdAt', 'fileId']);
 
   // 配置排序字段
   await index.updateSortableAttributes(['createdAt', 'fileName']);
@@ -124,6 +126,7 @@ async function searchDocuments(
     // 只返回必要的字段，排除完整的 content 字段以节省性能
     attributesToRetrieve: [
       'id',
+      'fileId',
       'fileName',
       'fileType',
       'pageRange',

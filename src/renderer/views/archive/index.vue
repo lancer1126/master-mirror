@@ -178,7 +178,7 @@ const handleShowInFolder = async (filePath: string) => {
 // 删除记录
 const handleDelete = async (fileId: string) => {
   try {
-    const result = await window.api.database.deleteUploadRecord(fileId);
+    const result = await window.api.upload.delete(fileId);
     if (result.success) {
       message.success('删除成功');
       // 重新加载记录

@@ -167,16 +167,15 @@ export const PARSER_CONFIG = {
 } as const;
 
 /**
- * 其他不从环境变量读取的常量
+ * 开发服务器配置
  */
-export const APP_CONFIG = {
-  /** 搜索索引目录名称 */
-  DEFAULT_DIR: 'UserData',
-  /** D 盘根目录（Windows） */
-  D_DRIVE: 'D:\\',
-  /** Home 目录名称 */
-  HOME_DIR: 'Home',
-  DATA_PATH: 'dataPath', // 数据保存路径
-  MEILISEARCH_PATH: 'meilisearchPath', // Meilisearch 可执行文件路径
-  MEILISEARCH_PORT: 'meilisearchPort', // Meilisearch 端口号
+export const DEV_SERVER = {
+  /** 开发服务器端口（与 electron.vite.config.ts 中的配置保持一致） */
+  PORT: 5173,
+  /** 开发服务器主机 */
+  HOST: 'localhost',
+  /** 获取完整 URL */
+  get URL() {
+    return `http://${this.HOST}:${this.PORT}`;
+  },
 } as const;

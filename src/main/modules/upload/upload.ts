@@ -4,7 +4,7 @@
  */
 
 import { dbService } from '@main/modules/database/dbService';
-import { meilisearchService } from '@main/modules/search/meilisearch';
+import { deleteDocumentsByFileId, meilisearchService } from '@main/modules/search/meilisearch';
 import type { ParsedChunk, ParseProgress } from '@main/parsers';
 import { parserFactory } from '@main/parsers';
 import { generateFileHash } from '@main/utils';
@@ -59,6 +59,9 @@ async function parseAndIndexFiles(
 
       console.log(`[Upload] 开始解析文件: ${fileName}`);
 
+      // 生成文件 ID（提前生成，用于 chunks 和数据库记录）
+      const fileId = generateFileHash(filePath);
+
       const parseResult = await parser.parse(
         filePath,
         {
@@ -87,12 +90,16 @@ async function parseAndIndexFiles(
 
       console.log(`[Upload] 文件解析成功: ${fileName}, 分块数: ${parseResult.chunks.length}`);
 
-      // 3. 批量索引到 Meilisearch
+      // 3. 给每个 chunk 添加 fileId（与数据库记录保持一致）
+      parseResult.chunks.forEach((chunk) => {
+        chunk.fileId = fileId;
+      });
+
+      // 4. 批量索引到 Meilisearch
       await indexChunks(index, parseResult.chunks, fileName, mainWindow, meilisearchClient);
 
-      // 4. 保存上传记录到数据库
+      // 5. 保存上传记录到数据库
       try {
-        const fileId = generateFileHash(filePath);
         const uploadTime = formatDateTime(new Date());
         dbService.addUploadRecord({
           fileId,
@@ -200,7 +207,7 @@ async function indexChunks(
     message: '索引完成',
   });
 
-  console.log(`[Upload] ✅ 索引完成: ${fileName}`);
+  console.log(`[Upload] 索引完成: ${fileName}`);
 
   // 验证索引结果
   try {
@@ -212,6 +219,32 @@ async function indexChunks(
   } catch (error) {
     console.error(`[Upload] 获取索引统计失败:`, error);
   }
+}
+
+/**
+ * 删除文件（同时删除数据库记录和 Meilisearch 索引）
+ */
+async function deleteFile(fileId: string): Promise<void> {
+  console.log(`[Upload] 开始删除文件: ${fileId}`);
+
+  // 1. 检查记录是否存在
+  const record = dbService.getUploadRecordById(fileId);
+  if (!record) {
+    throw new Error('文件记录不存在');
+  }
+
+  // 2. 删除 Meilisearch 索引（直接使用 fileId，更快更准确）
+  try {
+    const deletedCount = await deleteDocumentsByFileId(fileId);
+    console.log(`[Upload] 索引删除完成，删除了 ${deletedCount} 个分块`);
+  } catch (error: any) {
+    console.error('[Upload] 删除索引失败:', error);
+    throw new Error(`删除索引失败: ${error.message}`);
+  }
+
+  // 3. 删除数据库记录
+  dbService.deleteUploadRecord(fileId);
+  console.log(`[Upload] 数据库记录删除完成`);
 }
 
 /**
@@ -253,6 +286,22 @@ export function registerUploadHandlers(): void {
       return {
         success: false,
         error: error.message || '文件处理失败',
+      };
+    }
+  });
+
+  // 删除文件（包括数据库记录和索引）
+  ipcMain.handle('file:delete', async (_, fileId: string) => {
+    try {
+      await deleteFile(fileId);
+      return {
+        success: true,
+      };
+    } catch (error: any) {
+      console.error('[Upload] 删除文件失败:', error);
+      return {
+        success: false,
+        error: error.message || '删除文件失败',
       };
     }
   });
