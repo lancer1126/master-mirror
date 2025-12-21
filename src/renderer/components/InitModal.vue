@@ -49,7 +49,7 @@
       <div v-if="isDownloading" class="download-container">
         <a-progress type="circle" :percent="downloadPercent" />
         <p class="download-tip">正在下载并初始化搜索引擎组件 ({{ downloadPercent }}%)...</p>
-        <p class="download-subtip">下载源: Cloudflare CDN</p>
+        <p class="download-subtip">下载源: GitHub/Gitee Release</p>
         <div class="download-warning">请勿关闭程序</div>
       </div>
 
@@ -284,8 +284,6 @@ const saveAllConfig = async () => {
 
     // 延迟一秒提升体验
     await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    message.success('配置已完成，欢迎使用！');
     emit('config-complete');
     visible.value = false;
   } catch (error) {

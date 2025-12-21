@@ -1,13 +1,12 @@
-import { DOWNLOAD_CONFIG, MEILISEARCH_CONFIG } from '@shared/config';
+import { MEILISEARCH_CONFIG, OPEN_API } from '@shared/config';
+import axios from 'axios';
 import { ChildProcess, spawn } from 'child_process';
 import { app, BrowserWindow, ipcMain } from 'electron';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, renameSync, unlinkSync } from 'fs';
 import { join } from 'path';
 
 import { getStore } from '../system/appConfig';
 import { fileDownloader } from '../system/downloader';
-
-const DEFAULT_EXEC_NAME = 'meilisearch-windows-amd64.exe';
 
 /**
  * Meilisearch 服务管理类
@@ -93,8 +92,6 @@ class MeilisearchService {
   async initialize(mainWindow: Electron.BrowserWindow | null): Promise<void> {
     try {
       await this.start();
-      console.log('[App] Meilisearch 服务启动成功');
-
       this.status = {
         status: 'success',
         message: 'Meilisearch 服务已启动',
@@ -192,14 +189,14 @@ class MeilisearchService {
       // 监听标准输出
       this.process.stdout?.on('data', (data) => {
         const output = data.toString();
-        console.log('[Meilisearch]', output.trim());
+        // console.log('[Meilisearch]', output.trim());
         checkStartupSuccess(output);
       });
 
       // 监听标准错误输出（Meilisearch 主要使用 stderr 输出日志）
       this.process.stderr?.on('data', (data) => {
         const output = data.toString();
-        console.log('[Meilisearch]', output.trim());
+        // console.log('[Meilisearch]', output.trim());
         checkStartupSuccess(output);
       });
 
@@ -338,18 +335,64 @@ export function registerMeilisearchHandlers(): void {
   // 注册 Meilisearch 自动下载
   ipcMain.handle('meilisearch:download', async (_, dataPath: string) => {
     const mainWindow = BrowserWindow.getAllWindows()[0];
-    const downloadUrl = `${DOWNLOAD_CONFIG.HOST}/meilisearch-stable-windows-amd64.gz`;
     const saveDir = join(dataPath, 'bin');
 
     try {
+      // 1. 调用 API 获取最新发行版信息
+      console.log('[Meilisearch] 正在获取最新版本信息...');
+      const releaseApiUrl = OPEN_API.MEILISEARCH_RELEASE;
+      const response = await axios.get(releaseApiUrl);
+      if (!response.data) {
+        throw new Error('无法获取 Meilisearch 发行版信息，API 返回为空');
+      }
+
+      const releaseData = response.data;
+      const tagName = releaseData.tag_name;
+      const assets = releaseData.assets;
+      if (!assets || assets.length === 0) {
+        throw new Error('发行版中没有可用的资源文件');
+      }
+
+      // 2. 从 assets 中筛选包含 windows-amd64 的文件
+      const windowsAsset = assets.find((asset: any) =>
+        asset.name && asset.name.includes('windows-amd64')
+      );
+      if (!windowsAsset) {
+        throw new Error('未找到 Windows AMD64 版本的 Meilisearch');
+      }
+
+      const downloadUrl = windowsAsset.browser_download_url;
+      console.log('[Meilisearch] 找到下载地址:', downloadUrl);
+      console.log('[Meilisearch] 版本:', tagName);
+
+      // 3. 下载并解压文件（临时使用原始文件名）
+      const tempFileName = 'meilisearch-windows-amd64.exe';
       const execPath = await fileDownloader.downloadFile({
         url: downloadUrl,
         saveDir: saveDir,
-        fileName: DEFAULT_EXEC_NAME, 
+        fileName: tempFileName,
         mainWindow: mainWindow,
         progressChannel: 'meilisearch:download-progress',
       });
-      return { success: true, path: execPath };
+
+      // 4. 重命名文件，加上版本号
+      // meilisearch-windows-amd64.exe -> meilisearch-v1.30.0-windows-amd64.exe
+      const versionedFileName = `meilisearch-${tagName}-windows-amd64.exe`;
+      const versionedPath = join(saveDir, versionedFileName);
+
+      if (existsSync(versionedPath)) {
+        console.log('[Meilisearch] 删除旧版本文件:', versionedPath);
+        try {
+          unlinkSync(versionedPath);
+        } catch (e) {
+          console.warn('[Meilisearch] 删除旧文件失败:', e);
+        }
+      }
+
+      renameSync(execPath, versionedPath);
+      console.log('[Meilisearch] 文件已重命名为:', versionedFileName);
+
+      return { success: true, path: versionedPath, version: tagName };
     } catch (error: any) {
       console.error('[Meilisearch] 下载失败:', error);
       return { success: false, message: error.message };

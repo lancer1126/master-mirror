@@ -1,16 +1,16 @@
 import axios from 'axios';
 import { BrowserWindow } from 'electron';
-import { chmodSync,createWriteStream, existsSync, mkdirSync, renameSync, unlinkSync } from 'fs';
+import { chmodSync, createWriteStream, existsSync, mkdirSync, renameSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { pipeline } from 'stream/promises';
 import { createGunzip } from 'zlib';
 
 export interface DownloadOptions {
-  url: string;           // 下载地址
-  saveDir: string;       // 保存目录
-  fileName: string;      // 保存文件名
+  url: string; // 下载地址
+  saveDir: string; // 保存目录
+  fileName: string; // 保存文件名
   mainWindow?: BrowserWindow; // 用于发送进度的窗口
-  progressChannel?: string;   // 进度 IPC 频道名
+  progressChannel?: string; // 进度 IPC 频道名
   headers?: Record<string, string>; // 自定义请求头
 }
 
@@ -26,7 +26,7 @@ export class FileDownloader {
    */
   async downloadFile(options: DownloadOptions): Promise<string> {
     const { url, saveDir, fileName, mainWindow, progressChannel, headers } = options;
-    
+
     const tempDir = join(saveDir, 'temp');
     const tempFilePath = join(tempDir, fileName);
     const finalFilePath = join(saveDir, fileName);
@@ -51,11 +51,13 @@ export class FileDownloader {
           console.warn('[Downloader] 清理旧临时文件失败:', e);
         }
       }
-      
+
       // 清理可能存在的旧版本目标文件
       if (existsSync(finalFilePath)) {
-        try { unlinkSync(finalFilePath); } catch (e) {
-            console.warn('[Downloader] 无法删除旧文件，可能是正在运行:', e);
+        try {
+          unlinkSync(finalFilePath);
+        } catch (e) {
+          console.warn('[Downloader] 无法删除旧文件，可能是正在运行:', e);
         }
       }
 
@@ -64,10 +66,7 @@ export class FileDownloader {
         method: 'GET',
         url: url,
         responseType: 'stream',
-        headers: {
-          'User-Agent': 'MasterMirror/1.0.0',
-          ...headers
-        },
+        headers: { ...headers },
       });
 
       const totalLength = parseInt(response.headers['content-length'] || '0', 10);
@@ -80,15 +79,14 @@ export class FileDownloader {
           const percent = Math.round((downloadedLength / totalLength) * 100);
           // 限制发送频率 (每5%发送一次，或最后一次)
           if (percent % 5 === 0 || percent === 100) {
-             mainWindow.webContents.send(progressChannel, percent);
+            mainWindow.webContents.send(progressChannel, percent);
           }
         }
       });
 
       // 4. 管道流处理
-      // 自动检测是否需要解压：如果响应头是 gzip，或者 URL 看起来像 gzip 但我们要存的文件名不是 .gz
-      const isGzip = 
-        response.headers['content-type'] === 'application/gzip' || 
+      const isGzip =
+        response.headers['content-type'] === 'application/gzip' ||
         response.headers['content-type'] === 'application/x-gzip';
 
       const writer = createWriteStream(tempFilePath);
@@ -107,7 +105,7 @@ export class FileDownloader {
 
       // 5. 移动文件到最终位置
       renameSync(tempFilePath, finalFilePath);
-      
+
       // 6. 赋予执行权限 (Linux/macOS)
       if (process.platform !== 'win32') {
         chmodSync(finalFilePath, 0o755);
@@ -115,20 +113,19 @@ export class FileDownloader {
 
       // 7. 清理临时目录
       try {
-         if (existsSync(tempDir)) {
-             // 简单的删除空目录
-             const fs = require('fs');
-             fs.rmSync(tempDir, { recursive: true, force: true });
-         }
+        if (existsSync(tempDir)) {
+          // 简单的删除空目录
+          const fs = require('fs');
+          fs.rmSync(tempDir, { recursive: true, force: true });
+        }
       } catch (e) {
         console.warn('[Downloader] 清理临时目录失败:', e);
       }
 
       return finalFilePath;
-
     } catch (error: any) {
       console.error('[Downloader] 下载失败:', error);
-      
+
       // 清理残留
       if (existsSync(tempFilePath)) {
         try {
@@ -137,7 +134,7 @@ export class FileDownloader {
           console.warn('[Downloader] 清理残留文件失败:', e);
         }
       }
-      
+
       throw new Error(`下载失败: ${error.message}`);
     }
   }

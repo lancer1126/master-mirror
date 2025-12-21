@@ -90,9 +90,9 @@ class Config {
     return this.getEnv('VITE_MEILISEARCH_EXEC_DEFAULT');
   }
 
-  // ============ 下载服务器配置 ============
-  get DOWNLOAD_HOST(): string {
-    return this.getEnv('VITE_DOWNLOAD_HOST');
+  // ============ meilisearch发行版的api(GitHub或者Gitee) ============
+  get MEILISEARCH_RELEASE_API(): string {
+    return this.getEnv('VITE_MEILISEARCH_RELEASE_API');
   }
 
   // ============ 文件解析器配置 ============
@@ -162,9 +162,9 @@ export const MEILISEARCH_CONFIG = {
   },
 } as const;
 
-export const DOWNLOAD_CONFIG = {
-  get HOST() {
-    return config.DOWNLOAD_HOST;
+export const OPEN_API = {
+  get MEILISEARCH_RELEASE() {
+    return config.MEILISEARCH_RELEASE_API;
   },
 } as const;
 
