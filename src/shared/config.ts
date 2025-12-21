@@ -82,14 +82,6 @@ class Config {
     return this.getEnv('VITE_MEILISEARCH_INDEX');
   }
 
-  get MEILISEARCH_EXEC_WIN(): string {
-    return this.getEnv('VITE_MEILISEARCH_EXEC_WIN');
-  }
-
-  get MEILISEARCH_EXEC_DEFAULT(): string {
-    return this.getEnv('VITE_MEILISEARCH_EXEC_DEFAULT');
-  }
-
   // ============ meilisearch发行版的api(GitHub或者Gitee) ============
   get MEILISEARCH_RELEASE_API(): string {
     return this.getEnv('VITE_MEILISEARCH_RELEASE_API');
@@ -153,12 +145,6 @@ export const MEILISEARCH_CONFIG = {
   },
   get DEFAULT_INDEX() {
     return config.MEILISEARCH_INDEX;
-  },
-  get EXEC_WIN_NAME() {
-    return config.MEILISEARCH_EXEC_WIN;
-  },
-  get EXEC_DEFAULT_NAME() {
-    return config.MEILISEARCH_EXEC_DEFAULT;
   },
 } as const;
 

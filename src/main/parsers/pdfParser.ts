@@ -19,12 +19,13 @@ import { generateChunkId } from '../utils';
 // 默认配置
 const DEFAULT_CHUNK_SIZE = 50; // 每个分块50页
 const MAX_CHUNKS = 1000; // 最多1000个分块（避免超大文件）
+const EXTENSIONS = ['.pdf']; // 支持pdf格式
 
 /**
  * PDF 解析器
  */
 export class PdfParser implements IFileParser {
-  readonly supportedExtensions = ['.pdf'];
+  readonly supportedExtensions = EXTENSIONS;
 
   /**
    * 解析 PDF 文件

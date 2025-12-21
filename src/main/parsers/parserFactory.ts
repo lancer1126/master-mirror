@@ -14,10 +14,20 @@ import { PdfParser } from './pdfParser';
 class ParserFactory {
   /** 已注册的解析器映射 */
   private parsers: Map<string, IFileParser> = new Map();
+  /** 是否已初始化 */
+  private initialized = false;
 
-  constructor() {
-    // 注册默认解析器
+  /**
+   * 初始化解析器工厂（手动调用）
+   */
+  initialize(): void {
+    if (this.initialized) {
+      return;
+    }
+
     this.registerDefaultParsers();
+    this.initialized = true;
+    console.log('[ParserFactory] 解析器初始化完成');
   }
 
   /**

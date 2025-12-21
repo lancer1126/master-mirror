@@ -18,29 +18,8 @@ class MeilisearchService {
   /** 服务是否正在运行 */
   private isRunning: boolean = false;
 
-  /** Meilisearch 可执行文件路径 */
-  private readonly executablePath: string;
-
   /** 状态缓存（用于窗口加载完成后发送） */
   private status: { status: 'success' | 'error'; message: string } | null = null;
-
-  constructor() {
-    // 初始化时先使用默认路径，实际启动时会检查是否使用自定义路径
-    const execName =
-      process.platform === 'win32'
-        ? MEILISEARCH_CONFIG.EXEC_WIN_NAME
-        : MEILISEARCH_CONFIG.EXEC_DEFAULT_NAME;
-
-    // 开发环境：使用项目根目录下的 bin 文件夹
-    // 生产环境：使用打包后的 resources 目录
-    if (app.isPackaged) {
-      // 生产环境：resources/bin/meilisearch
-      this.executablePath = join(process.resourcesPath, 'bin', execName);
-    } else {
-      // 开发环境：项目根目录/bin/meilisearch
-      this.executablePath = join(app.getAppPath(), 'bin', execName);
-    }
-  }
 
   /**
    * 获取实际使用的可执行文件路径（使用配置中的路径）
@@ -52,10 +31,9 @@ class MeilisearchService {
     // 如果配置了路径且文件存在，使用配置的路径
     if (meilisearchPath && meilisearchPath.trim() !== '' && existsSync(meilisearchPath)) {
       return meilisearchPath;
+    } else {
+      throw new Error('Meilisearch 可执行文件不存在');
     }
-
-    // 否则使用默认路径（兼容旧版本或未配置的情况）
-    return this.executablePath;
   }
 
   /**
@@ -201,9 +179,8 @@ class MeilisearchService {
       });
 
       // 监听进程退出
-      this.process.on('exit', (code, signal) => {
+      this.process.on('exit', () => {
         this.isRunning = false;
-        console.log(`[Meilisearch] 进程退出, 代码: ${code}, 信号: ${signal}`);
       });
 
       // 监听进程错误

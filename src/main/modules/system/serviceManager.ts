@@ -1,7 +1,8 @@
+import { dbService } from '@main/modules/database/dbService';
+import { meilisearchService, setupMeilisearchStatusListener } from '@main/modules/search/meilisearch';
+import { parserFactory } from '@main/parsers';
 import { BrowserWindow, ipcMain } from 'electron';
 
-import { dbService } from '../database/dbService';
-import { meilisearchService, setupMeilisearchStatusListener } from '../search/meilisearch';
 import { checkConfigComplete } from './appConfig';
 
 let servicesInitialized = false;
@@ -20,6 +21,8 @@ export function startServices(mainWindow: BrowserWindow | null): void {
     dbService.initialize();
     // 启动 Meilisearch 服务
     meilisearchService.initialize(mainWindow);
+    // 初始化解析器工厂
+    parserFactory.initialize();
     
     servicesInitialized = true;
     // 初始化搜索索引（延迟执行，等待 Meilisearch 启动）
@@ -29,6 +32,8 @@ export function startServices(mainWindow: BrowserWindow | null): void {
         console.log('[App] 搜索索引初始化完成');
       } catch (error) {
         console.error('[App] 搜索索引初始化失败:', error);
+      } finally {
+        console.log('[App] 服务初始化完成');
       }
     }, 3000);
   } else {

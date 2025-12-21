@@ -3,16 +3,15 @@
  * 负责文件解析和索引到 Meilisearch
  */
 
+import { dbService } from '@main/modules/database/dbService';
+import { meilisearchService } from '@main/modules/search/meilisearch';
+import type { ParsedChunk, ParseProgress } from '@main/parsers';
+import { parserFactory } from '@main/parsers';
+import { generateFileHash } from '@main/utils';
 import { MEILISEARCH_CONFIG, PARSER_CONFIG } from '@shared/config';
 import { BrowserWindow, ipcMain } from 'electron';
 import { MeiliSearch } from 'meilisearch';
 import { basename } from 'path';
-
-import type { ParsedChunk, ParseProgress } from '../../parsers';
-import { parserFactory } from '../../parsers';
-import { generateFileHash } from '../../utils';
-import { dbService } from '../database/dbService';
-import { meilisearchService } from '../search/meilisearch';
 
 /**
  * 解析并索引文件
