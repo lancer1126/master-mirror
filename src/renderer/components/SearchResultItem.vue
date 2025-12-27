@@ -23,9 +23,8 @@
 
 <script setup lang="ts">
 import { FolderOpenOutlined } from '@ant-design/icons-vue';
+import type { SearchResultItemEmits, SearchResultItemProps } from '@shared/types';
 import { computed, ref } from 'vue';
-
-import type { SearchResultItemEmits, SearchResultItemProps } from '@/types';
 
 import SearchDetailModal from './SearchDetailModal.vue';
 

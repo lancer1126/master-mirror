@@ -47,10 +47,9 @@
 
 <script setup lang="ts">
 import { FolderOpenOutlined } from '@ant-design/icons-vue';
+import type { SearchDetailModalEmits, SearchDetailModalProps, SearchHit } from '@shared/types';
 import { message } from 'ant-design-vue';
 import { computed } from 'vue';
-
-import type { SearchDetailModalEmits, SearchDetailModalProps, SearchHit } from '@/types';
 
 const props = defineProps<SearchDetailModalProps>();
 const emit = defineEmits<SearchDetailModalEmits>();

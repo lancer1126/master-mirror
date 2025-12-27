@@ -1,7 +1,6 @@
+import type { IndexStats, SearchHit, SearchOptions, SearchResult } from '@shared/types';
 import { message } from 'ant-design-vue';
 import { computed, ref } from 'vue';
-
-import type { IndexStats, SearchHit, SearchOptions, SearchResult } from '@/types';
 
 /**
  * Meilisearch 搜索功能 Composable

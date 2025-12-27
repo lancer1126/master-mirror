@@ -3,17 +3,16 @@
  * 统一处理文件上传逻辑和进度管理
  */
 
+import type { ParseProgress, UploadOptions } from '@shared/types';
 import { message } from 'ant-design-vue';
 import { ref } from 'vue';
-
-import type { FileProgress, UploadOptions } from '@/types';
 
 /**
  * 文件上传 Hook
  */
 export function useFileUpload() {
   const uploading = ref(false);
-  const progressMap = ref<Map<string, FileProgress>>(new Map());
+  const progressMap = ref<Map<string, ParseProgress>>(new Map());
 
   /**
    * 从 File 对象数组获取文件路径

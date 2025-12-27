@@ -1,4 +1,12 @@
 import { ElectronAPI } from '@electron-toolkit/preload';
+import type {
+  IndexStats,
+  ParseProgress,
+  SearchHit,
+  SearchOptions,
+  SearchResult,
+  UploadRecord,
+} from '@shared/types';
 
 interface Settings {
   dataPath: string;
@@ -13,56 +21,6 @@ interface UploadResult {
     failed: Array<{ fileName: string; error: string }>;
   };
   error?: string;
-}
-
-interface ParseProgress {
-  fileName: string;
-  current: number;
-  total: number;
-  percentage: number;
-  status: 'parsing' | 'indexing' | 'completed' | 'failed';
-  message?: string;
-}
-
-interface SearchHit {
-  id: string;
-  fileId?: string;
-  fileName: string;
-  fileType: string;
-  content: string;
-  pageRange?: string;
-  totalPages?: number;
-  chunkIndex: number;
-  totalChunks: number;
-  filePath: string;
-  createdAt: number;
-  metadata?: Record<string, any>;
-  _formatted?: {
-    content?: string;
-    fileName?: string;
-    [key: string]: any;
-  };
-  _matchesPosition?: Record<string, Array<{ start: number; length: number }>>;
-}
-
-interface SearchResult {
-  hits: SearchHit[];
-  processingTimeMs: number;
-  query: string;
-  estimatedTotalHits: number;
-}
-
-interface SearchOptions {
-  limit?: number;
-  offset?: number;
-  filter?: string;
-  sort?: string[];
-}
-
-interface IndexStats {
-  numberOfDocuments: number;
-  isIndexing: boolean;
-  fieldDistribution: Record<string, number>;
 }
 
 interface API {
@@ -115,13 +73,6 @@ interface API {
 interface MeilisearchStatus {
   status: 'success' | 'error';
   message: string;
-}
-
-interface UploadRecord {
-  fileId: string;
-  fileName: string;
-  filePath: string;
-  uploadTime: string;
 }
 
 interface ipcRenderer {

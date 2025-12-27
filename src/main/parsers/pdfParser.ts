@@ -3,17 +3,17 @@
  * 使用 pdfjs-dist 进行分页解析
  */
 
-import { readFile } from 'fs/promises';
-import { basename } from 'path';
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
-
 import type {
   IFileParser,
   ParsedChunk,
   ParseOptions,
   ParseProgress,
   ParseResult,
-} from '../types/parser';
+} from '@shared/types';
+import { readFile } from 'fs/promises';
+import { basename } from 'path';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+
 import { generateChunkId } from '../utils';
 
 // 默认配置

@@ -17,7 +17,7 @@
 </template>
 
 <script setup lang="ts">
-import type { UploadOverlayProps } from '@/types';
+import type { UploadOverlayProps } from '@shared/types';
 
 defineProps<UploadOverlayProps>();
 </script>

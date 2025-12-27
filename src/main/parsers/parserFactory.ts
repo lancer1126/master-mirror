@@ -3,9 +3,9 @@
  * 负责根据文件类型创建相应的解析器
  */
 
+import type { IFileParser } from '@shared/types';
 import { extname } from 'path';
 
-import type { IFileParser } from '../types/parser';
 import { PdfParser } from './pdfParser';
 
 /**

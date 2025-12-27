@@ -2,11 +2,11 @@
  * 数据库服务 - 使用 better-sqlite3 管理上传记录
  */
 
+import type { UploadRecord } from '@shared/types';
 import Database from 'better-sqlite3';
 import { existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
-import type { UploadRecord } from '../../types/database';
 import { getStore } from '../system/appConfig';
 
 class DatabaseService {

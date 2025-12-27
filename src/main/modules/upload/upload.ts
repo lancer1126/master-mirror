@@ -79,11 +79,9 @@ async function parseAndIndexFiles(
       if (!parseResult.success) {
         throw new Error(parseResult.error || '文件解析失败');
       }
-
       if (parseResult.chunks.length === 0) {
         throw new Error('解析结果为空，没有提取到任何内容');
       }
-
       console.log(`[Upload] 文件解析成功: ${fileName}, 分块数: ${parseResult.chunks.length}`);
 
       // 3. 给每个 chunk 添加 fileId（与数据库记录保持一致）

@@ -46,7 +46,7 @@
           <div class="results-list">
             <search-result-item
               v-for="file in groupedFiles"
-              :key="file.fileName"
+              :key="file.fileId"
               :file="file"
               @show-in-folder="handleShowInFolder"
             />
@@ -72,13 +72,13 @@
 </template>
 
 <script setup lang="ts">
+import type { GroupedFile, SearchHit } from '@shared/types';
 import { message } from 'ant-design-vue';
 import { computed } from 'vue';
 
 import candyIcon from '@/assets/icons/美食-棒棒糖.svg';
 import logoSearch from '@/assets/logo/悠闲.svg';
 import SearchResultItem from '@/components/SearchResultItem.vue';
-import type { GroupedFile, SearchHit } from '@/types';
 
 const searchQuery = ref('');
 const isHovered = ref(false);
@@ -138,8 +138,8 @@ const handleSearch = async () => {
       totalResults.value = result.data.estimatedTotalHits;
       searchTime.value = result.data.processingTimeMs;
 
-      // 按文件名分组
-      groupFilesByName(result.data.hits);
+      // 按文件ID分组
+      groupFilesByFileId(result.data.hits);
     } else {
       message.error(result.error || '搜索失败');
       searchResults.value = [];
@@ -173,14 +173,18 @@ const getChunkMatchCount = (hit: SearchHit): number => {
 };
 
 /**
- * 按文件名分组
+ * 按文件ID分组（避免同名文件被错误合并）
  */
-const groupFilesByName = (hits: SearchHit[]) => {
+const groupFilesByFileId = (hits: SearchHit[]) => {
   const fileMap = new Map<string, GroupedFile>();
 
   hits.forEach((hit) => {
-    if (!fileMap.has(hit.fileName)) {
-      fileMap.set(hit.fileName, {
+    // 使用 fileId 作为唯一标识（如果没有则降级使用 fileName）
+    const fileKey = hit.fileId || hit.fileName;
+
+    if (!fileMap.has(fileKey)) {
+      fileMap.set(fileKey, {
+        fileId: fileKey,
         fileName: hit.fileName,
         filePath: hit.filePath,
         fileType: hit.fileType,
@@ -190,7 +194,7 @@ const groupFilesByName = (hits: SearchHit[]) => {
       });
     }
 
-    const file = fileMap.get(hit.fileName)!;
+    const file = fileMap.get(fileKey)!;
 
     // 累加这个chunk中的实际匹配次数
     const chunkMatches = getChunkMatchCount(hit);
@@ -206,6 +210,7 @@ const groupFilesByName = (hits: SearchHit[]) => {
   console.log(
     '文件分组统计:',
     allGroupedFiles.value.map((f) => ({
+      fileId: f.fileId,
       fileName: f.fileName,
       chunks: f.matches.length,
       totalMatches: f.matchCount,

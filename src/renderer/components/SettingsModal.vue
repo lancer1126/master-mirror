@@ -39,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import type { SettingsModalEmits, SettingsModalProps } from '@/types';
+import type { SettingsModalEmits, SettingsModalProps } from '@shared/types';
 
 const props = defineProps<SettingsModalProps>();
 const emit = defineEmits<SettingsModalEmits>();

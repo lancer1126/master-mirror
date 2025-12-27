@@ -91,11 +91,10 @@ import {
   FolderOpenOutlined,
   ReloadOutlined,
 } from '@ant-design/icons-vue';
+import type { UploadRecord } from '@shared/types';
 import type { TableColumnsType, TablePaginationConfig } from 'ant-design-vue';
 import { message } from 'ant-design-vue';
 import { onMounted, ref } from 'vue';
-
-import type { UploadRecord } from '@/types';
 
 // 表格列定义
 const columns: TableColumnsType = [

@@ -1,59 +1,8 @@
 import { MEILISEARCH_CONFIG } from '@shared/config';
+import type { IndexStats, SearchHit, SearchOptions, SearchResult } from '@shared/types';
 import { ipcMain } from 'electron';
 
 import { getMeilisearchClient } from './meilisearch';
-
-/**
- * 搜索结果（与上传模块的ParsedChunk对应）
- */
-export interface SearchHit {
-  /** 分块ID */
-  id: string;
-  /** 文件ID（用于快速过滤，索引数据中应始终存在） */
-  fileId?: string;
-  /** 文件名 */
-  fileName: string;
-  /** 文件类型 */
-  fileType: string;
-  /** 文本内容 */
-  content?: string;
-  /** 页码范围 */
-  pageRange?: string;
-  /** 总页数 */
-  totalPages?: number;
-  /** 分块索引 */
-  chunkIndex: number;
-  /** 总分块数 */
-  totalChunks: number;
-  /** 文件路径 */
-  filePath: string;
-  /** 创建时间 */
-  createdAt: number;
-  /** 元数据 */
-  metadata?: Record<string, any>;
-  /** 格式化后的内容（包含高亮和裁剪） */
-  _formatted?: {
-    content?: string;
-    fileName?: string;
-    [key: string]: any;
-  };
-  /** 匹配位置信息 */
-  _matchesPosition?: Record<string, Array<{ start: number; length: number }>>;
-}
-
-/**
- * 搜索结果
- */
-export interface SearchResult {
-  /** 搜索命中的文档 */
-  hits: SearchHit[];
-  /** 搜索耗时（毫秒） */
-  processingTimeMs: number;
-  /** 查询关键字 */
-  query: string;
-  /** 结果总数 */
-  estimatedTotalHits: number;
-}
 
 /**
  * 初始化索引（设置可搜索字段和排序规则）
@@ -87,15 +36,7 @@ async function initializeIndex(): Promise<void> {
 /**
  * 搜索文档
  */
-async function searchDocuments(
-  query: string,
-  options?: {
-    limit?: number;
-    offset?: number;
-    filter?: string;
-    sort?: string[];
-  },
-): Promise<SearchResult> {
+async function searchDocuments(query: string, options?: SearchOptions): Promise<SearchResult> {
   const client = getMeilisearchClient();
   const index = client.index(MEILISEARCH_CONFIG.DEFAULT_INDEX);
 
@@ -126,6 +67,7 @@ async function searchDocuments(
     showMatchesPosition: true, // 显示匹配位置
   });
 
+  console.log('[Search] 搜索结果:', result);
   return {
     hits: result.hits,
     processingTimeMs: result.processingTimeMs,
@@ -137,11 +79,7 @@ async function searchDocuments(
 /**
  * 获取索引统计信息
  */
-async function getIndexStats(): Promise<{
-  numberOfDocuments: number;
-  isIndexing: boolean;
-  fieldDistribution: Record<string, number>;
-}> {
+async function getIndexStats(): Promise<IndexStats> {
   const client = getMeilisearchClient();
   const index = client.index(MEILISEARCH_CONFIG.DEFAULT_INDEX);
 
@@ -184,16 +122,7 @@ export function registerSearchHandlers(): void {
   // 搜索
   ipcMain.handle(
     'search:query',
-    async (
-      _event,
-      query: string,
-      options?: {
-        limit?: number;
-        offset?: number;
-        filter?: string;
-        sort?: string[];
-      },
-    ) => {
+    async (_event, query: string, options?: SearchOptions) => {
       try {
         const result = await searchDocuments(query, options);
         return { success: true, data: result };

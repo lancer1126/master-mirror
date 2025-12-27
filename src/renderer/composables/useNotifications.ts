@@ -1,6 +1,5 @@
+import type { NotificationItem } from '@shared/types';
 import { computed, reactive } from 'vue';
-
-import type { NotificationItem } from '@/types';
 
 /**
  * 消息状态

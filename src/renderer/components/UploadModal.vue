@@ -59,12 +59,12 @@
 
 <script setup lang="ts">
 import { InboxOutlined } from '@ant-design/icons-vue';
+import type { ParseProgress, UploadModalEmits, UploadModalProps } from '@shared/types';
 import type { UploadProps } from 'ant-design-vue';
 import { message } from 'ant-design-vue';
 import { computed, ref, watch } from 'vue';
 
 import { useFileUpload } from '@/composables/useFileUpload';
-import type { FileProgress, UploadModalEmits, UploadModalProps } from '@/types';
 
 const props = defineProps<UploadModalProps>();
 const emit = defineEmits<UploadModalEmits>();
@@ -154,7 +154,7 @@ const handleUpload = async () => {
   const result = await uploadFileObjects(filesToUpload, {
     showLoading: false, // Modal内部显示进度，不使用全局loading
     showSuccess: true,
-    onProgress: (progress: FileProgress) => {
+    onProgress: (progress: ParseProgress) => {
       // 进度已经通过 progressMap 响应式更新
       console.log('上传进度:', progress);
     },
