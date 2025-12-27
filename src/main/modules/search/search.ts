@@ -1,8 +1,7 @@
 import { MEILISEARCH_CONFIG } from '@shared/config';
 import { ipcMain } from 'electron';
-import { MeiliSearch } from 'meilisearch';
 
-import { meilisearchService } from './meilisearch';
+import { getMeilisearchClient } from './meilisearch';
 
 /**
  * 搜索结果（与上传模块的ParsedChunk对应）
@@ -57,28 +56,10 @@ export interface SearchResult {
 }
 
 /**
- * Meilisearch 客户端单例
- */
-let meiliClient: MeiliSearch | null = null;
-
-/**
- * 获取或创建 Meilisearch 客户端
- */
-function getMeiliClient(): MeiliSearch {
-  if (!meiliClient) {
-    meiliClient = new MeiliSearch({
-      host: meilisearchService.getUrl(),
-      apiKey: meilisearchService.getMasterKey(),
-    });
-  }
-  return meiliClient;
-}
-
-/**
  * 初始化索引（设置可搜索字段和排序规则）
  */
 async function initializeIndex(): Promise<void> {
-  const client = getMeiliClient();
+  const client = getMeilisearchClient();
   const index = client.index(MEILISEARCH_CONFIG.DEFAULT_INDEX);
 
   try {
@@ -115,7 +96,7 @@ async function searchDocuments(
     sort?: string[];
   },
 ): Promise<SearchResult> {
-  const client = getMeiliClient();
+  const client = getMeilisearchClient();
   const index = client.index(MEILISEARCH_CONFIG.DEFAULT_INDEX);
 
   const result = await index.search<SearchHit>(query, {
@@ -161,7 +142,7 @@ async function getIndexStats(): Promise<{
   isIndexing: boolean;
   fieldDistribution: Record<string, number>;
 }> {
-  const client = getMeiliClient();
+  const client = getMeilisearchClient();
   const index = client.index(MEILISEARCH_CONFIG.DEFAULT_INDEX);
 
   const stats = await index.getStats();
@@ -177,7 +158,7 @@ async function getIndexStats(): Promise<{
  * 清空索引
  */
 async function clearIndex(): Promise<void> {
-  const index = getMeiliClient().index(MEILISEARCH_CONFIG.DEFAULT_INDEX);
+  const index = getMeilisearchClient().index(MEILISEARCH_CONFIG.DEFAULT_INDEX);
 
   const task = await index.deleteAllDocuments();
   console.log('[Search] 清空索引任务:', task.taskUid);

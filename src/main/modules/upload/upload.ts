@@ -4,13 +4,13 @@
  */
 
 import { dbService } from '@main/modules/database/dbService';
-import { deleteDocumentsByFileId, meilisearchService } from '@main/modules/search/meilisearch';
+import { deleteDocumentsByFileId, getMeilisearchClient } from '@main/modules/search/meilisearch';
 import type { ParsedChunk, ParseProgress } from '@main/parsers';
 import { parserFactory } from '@main/parsers';
 import { generateFileHash } from '@main/utils';
 import { MEILISEARCH_CONFIG, PARSER_CONFIG } from '@shared/config';
 import { BrowserWindow, ipcMain } from 'electron';
-import { MeiliSearch } from 'meilisearch';
+import type { MeiliSearch } from 'meilisearch';
 import { basename } from 'path';
 
 /**
@@ -28,12 +28,8 @@ async function parseAndIndexFiles(
   const success: string[] = [];
   const failed: Array<{ fileName: string; error: string }> = [];
 
-  // 创建 Meilisearch 客户端
-  const meilisearchClient = new MeiliSearch({
-    host: meilisearchService.getUrl(),
-    apiKey: meilisearchService.getMasterKey(),
-  });
-
+  // 获取统一的 Meilisearch 客户端实例
+  const meilisearchClient = getMeilisearchClient();
   const index = meilisearchClient.index(MEILISEARCH_CONFIG.DEFAULT_INDEX);
 
   // 逐个处理文件

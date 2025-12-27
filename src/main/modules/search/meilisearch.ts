@@ -3,10 +3,41 @@ import axios from 'axios';
 import { ChildProcess, spawn } from 'child_process';
 import { app, BrowserWindow, ipcMain } from 'electron';
 import { existsSync, mkdirSync, renameSync, unlinkSync } from 'fs';
+import { MeiliSearch } from 'meilisearch';
 import { join } from 'path';
 
 import { getStore } from '../system/appConfig';
 import { fileDownloader } from '../system/downloader';
+
+/**
+ * Meilisearch 客户端单例
+ * 避免每次操作都创建新的客户端实例
+ */
+let meilisearchInstance: MeiliSearch | null = null;
+
+/**
+ * 获取 Meilisearch 客户端实例（单例模式）
+ * @returns MeiliSearch 客户端实例
+ */
+export function getMeilisearchClient(): MeiliSearch {
+  if (!meilisearchInstance) {
+    meilisearchInstance = new MeiliSearch({
+      host: meilisearchService.getUrl(),
+      apiKey: meilisearchService.getMasterKey(),
+    });
+    console.log('[Meilisearch] 创建客户端实例');
+  }
+  return meilisearchInstance;
+}
+
+/**
+ * 重置 Meilisearch 客户端实例
+ * 当配置变更时调用（例如端口或密钥变更）
+ */
+export function resetMeilisearchClient(): void {
+  meilisearchInstance = null;
+  console.log('[Meilisearch] 客户端实例已重置');
+}
 
 /**
  * Meilisearch 服务管理类
@@ -410,13 +441,8 @@ export function setupMeilisearchCleanup(): void {
  * @returns 删除的文档数量
  */
 export async function deleteDocumentsByFileId(fileId: string): Promise<number> {
-  const { MeiliSearch } = await import('meilisearch');
-
-  const client = new MeiliSearch({
-    host: meilisearchService.getUrl(),
-    apiKey: meilisearchService.getMasterKey(),
-  });
-
+  // 使用统一的客户端实例
+  const client = getMeilisearchClient();
   const index = client.index(MEILISEARCH_CONFIG.DEFAULT_INDEX);
 
   console.log(`[Meilisearch] 开始删除文件索引: fileId=${fileId}`);
