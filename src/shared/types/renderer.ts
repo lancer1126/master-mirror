@@ -6,6 +6,18 @@
 import type { ParseProgress, SearchHit } from './common';
 
 /**
+ * 详情页展开后的单次匹配信息
+ */
+export interface DetailMatch extends SearchHit {
+  /** 当前匹配在所在 chunk 中的序号（从 1 开始） */
+  matchOccurrenceIndex: number;
+  /** 当前 chunk 中的匹配总数 */
+  occurrencesInChunk: number;
+  /** 预处理后的上下文片段（包含高亮） */
+  snippet: string;
+}
+
+/**
  * 按文件分组的搜索结果（用于前端展示）
  */
 export interface GroupedFile {
@@ -19,10 +31,14 @@ export interface GroupedFile {
   fileType: string;
   /** 总页数 */
   totalPages?: number;
-  /** 匹配总次数 */
+  /** 匹配总次数（从 facets 获取的精确统计） */
   matchCount: number;
-  /** 匹配的分块列表 */
-  matches: SearchHit[];
+  /** 预览用的第一个匹配 chunk */
+  previewChunk: SearchHit;
+  /** 展开后的匹配项列表（详情加载后才有） */
+  matches?: DetailMatch[];
+  /** 是否已加载详情 */
+  detailsLoaded?: boolean;
 }
 
 /**
@@ -42,6 +58,8 @@ export interface SettingsModalEmits {
 export interface SearchDetailModalProps {
   open: boolean;
   file: GroupedFile | null;
+  /** 搜索关键词（用于加载文件详情） */
+  searchQuery: string;
 }
 
 export interface SearchDetailModalEmits {
@@ -53,6 +71,8 @@ export interface SearchDetailModalEmits {
  */
 export interface SearchResultItemProps {
   file: GroupedFile;
+  /** 搜索关键词（用于详情加载） */
+  searchQuery: string;
 }
 
 export interface SearchResultItemEmits {

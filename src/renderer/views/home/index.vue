@@ -35,8 +35,7 @@
         <!-- 搜索信息 - 固定在顶部 -->
         <div class="results-header">
           <span class="results-count">
-            找到 {{ groupedFiles.length }} 个文件，共 {{ totalResults }} 处匹配，用时
-            {{ searchTime }} ms
+            找到 {{ groupedFiles.length }} 个文件，用时 {{ searchTime }} ms
           </span>
         </div>
 
@@ -48,6 +47,7 @@
               v-for="file in groupedFiles"
               :key="file.fileId"
               :file="file"
+              :search-query="searchQuery"
               @show-in-folder="handleShowInFolder"
             />
           </div>
@@ -125,21 +125,17 @@ const handleSearch = async () => {
   try {
     // 将查询词用引号包裹，实现精确短语匹配
     const exactQuery = `"${query}"`;
-    console.log('精确搜索:', exactQuery);
+    console.log('搜索:', exactQuery);
 
-    // 获取所有匹配的chunks（设置较大的limit）
-    const result = await window.api.search.query(exactQuery, {
-      limit: 500, // 获取足够多的结果
-      offset: 0,
-    });
+    const result = await window.api.search.query(exactQuery);
 
     if (result.success && result.data) {
       searchResults.value = result.data.hits;
       totalResults.value = result.data.estimatedTotalHits;
       searchTime.value = result.data.processingTimeMs;
 
-      // 按文件ID分组
-      groupFilesByFileId(result.data.hits);
+      // 使用 facets 按文件ID分组（优化版）
+      groupFilesByFileIdWithFacets(result.data.hits, result.data.facetDistribution);
     } else {
       message.error(result.error || '搜索失败');
       searchResults.value = [];
@@ -160,27 +156,35 @@ const handleSearch = async () => {
 };
 
 /**
- * 计算单个chunk中的实际匹配次数
+ * 统计 chunk 的命中次数
  */
 const getChunkMatchCount = (hit: SearchHit): number => {
-  // 如果有 _matchesPosition 信息，使用它来统计
-  if (hit._matchesPosition?.content && Array.isArray(hit._matchesPosition.content)) {
-    return hit._matchesPosition.content.length;
+  const contentMatches = hit._matchesPosition?.content;
+  if (Array.isArray(contentMatches) && contentMatches.length > 0) {
+    return contentMatches.length;
   }
-
-  // 降级方案：至少有1个匹配（因为这个chunk被返回了）
   return 1;
 };
 
 /**
- * 按文件ID分组（避免同名文件被错误合并）
+ * 使用 Facets 按文件ID分组（优化版）
+ * 只保存每个文件的第一个 chunk 作为预览，匹配数按 chunk 中的实际命中次数累加
  */
-const groupFilesByFileId = (hits: SearchHit[]) => {
+const groupFilesByFileIdWithFacets = (
+  hits: SearchHit[],
+  facetDistribution?: { fileId?: Record<string, number> },
+) => {
   const fileMap = new Map<string, GroupedFile>();
+  const facets = facetDistribution?.fileId || {};
 
+  // 遍历所有 hits，每个文件只保留第一个作为预览
   hits.forEach((hit) => {
-    // 使用 fileId 作为唯一标识（如果没有则降级使用 fileName）
     const fileKey = hit.fileId || hit.fileName;
+    if (!fileKey) {
+      return;
+    }
+
+    const chunkMatchCount = getChunkMatchCount(hit) || facets[fileKey] || 1;
 
     if (!fileMap.has(fileKey)) {
       fileMap.set(fileKey, {
@@ -189,37 +193,41 @@ const groupFilesByFileId = (hits: SearchHit[]) => {
         filePath: hit.filePath,
         fileType: hit.fileType,
         totalPages: hit.totalPages,
-        matchCount: 0,
-        matches: [],
+        matchCount: chunkMatchCount,
+        previewChunk: hit,
+        detailsLoaded: false,
       });
+    } else {
+      const existing = fileMap.get(fileKey);
+      if (existing) {
+        existing.matchCount += chunkMatchCount;
+      }
     }
-
-    const file = fileMap.get(fileKey)!;
-
-    // 累加这个chunk中的实际匹配次数
-    const chunkMatches = getChunkMatchCount(hit);
-    file.matchCount += chunkMatches;
-
-    file.matches.push(hit);
   });
 
-  // 按匹配数量降序排序
-  allGroupedFiles.value = Array.from(fileMap.values()).sort((a, b) => b.matchCount - a.matchCount);
+  // 如果有文件在 facets 中但不在 hits 中（理论上不应该发生，但做个兜底）
+  Object.entries(facets).forEach(([fileId]) => {
+    if (!fileMap.has(fileId)) {
+      console.warn(`文件 ${fileId} 在 facets 中但不在 hits 中`);
+    }
+  });
+
+  allGroupedFiles.value = Array.from(fileMap.values());
   totalFileCount.value = allGroupedFiles.value.length;
 
+  console.log('使用 Facets 优化后的文件分组:');
   console.log(
-    '文件分组统计:',
     allGroupedFiles.value.map((f) => ({
       fileId: f.fileId,
       fileName: f.fileName,
-      chunks: f.matches.length,
-      totalMatches: f.matchCount,
+      matchCount: f.matchCount,
+      hasPreview: !!f.previewChunk,
+      detailsLoaded: f.detailsLoaded,
     })),
   );
 
   // 重置到第一页
   currentPage.value = 1;
-  console.log('file:', allGroupedFiles.value);
 };
 
 /**

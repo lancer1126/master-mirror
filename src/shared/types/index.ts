@@ -23,6 +23,7 @@ export type { IFileParser, ParseOptions, ParseResult } from './main';
 
 // 导出渲染进程类型
 export type {
+  DetailMatch,
   GroupedFile,
   NotificationItem,
   NotificationType,

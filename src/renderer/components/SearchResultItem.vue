@@ -17,7 +17,11 @@
     </div>
 
     <!-- 详情弹窗 -->
-    <search-detail-modal v-model:open="detailModalVisible" :file="file" />
+    <search-detail-modal
+      v-model:open="detailModalVisible"
+      :file="file"
+      :search-query="searchQuery"
+    />
   </div>
 </template>
 
@@ -43,14 +47,15 @@ const matchDescription = computed(() => {
 
 /**
  * 获取预览内容（保留高亮标记）
+ * 使用 previewChunk 而不是完整的 matches 列表
  */
 const preview = computed(() => {
-  if (props.file.matches.length === 0) return '';
+  const previewChunk = props.file.previewChunk;
 
-  const firstMatch = props.file.matches[0];
+  if (!previewChunk) return '';
 
-  if (firstMatch._formatted?.content) {
-    const htmlContent = firstMatch._formatted.content;
+  if (previewChunk._formatted?.content) {
+    const htmlContent = previewChunk._formatted.content;
     const maxLength = 150;
 
     // 如果内容太长，截取但保留完整的标签

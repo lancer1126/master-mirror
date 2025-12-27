@@ -55,6 +55,10 @@ export interface SearchResult {
   processingTimeMs: number;
   /** 估计总命中数 */
   estimatedTotalHits: number;
+  /** Facet 分布（按 fileId 统计每个文件的 chunks 数量） */
+  facetDistribution?: {
+    fileId?: Record<string, number>;
+  };
 }
 
 /**
@@ -69,6 +73,12 @@ export interface SearchOptions {
   filter?: string;
   /** 排序规则 */
   sort?: string[];
+  /** 每次批量获取的 chunk 数量（默认 500） */
+  batchSize?: number;
+  /** 是否在搜索结果中返回完整内容 */
+  includeContent?: boolean;
+  /** 是否需要一次性取回所有命中（默认 true） */
+  fetchAllHits?: boolean;
 }
 
 /**

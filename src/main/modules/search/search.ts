@@ -4,6 +4,8 @@ import { ipcMain } from 'electron';
 
 import { getMeilisearchClient } from './meilisearch';
 
+const DEFAULT_BATCH_SIZE = 500;
+
 /**
  * 初始化索引（设置可搜索字段和排序规则）
  */
@@ -39,40 +41,110 @@ async function initializeIndex(): Promise<void> {
 async function searchDocuments(query: string, options?: SearchOptions): Promise<SearchResult> {
   const client = getMeilisearchClient();
   const index = client.index(MEILISEARCH_CONFIG.DEFAULT_INDEX);
+  const batchSize = options?.batchSize || DEFAULT_BATCH_SIZE;
 
-  const result = await index.search<SearchHit>(query, {
-    limit: options?.limit || 10,
-    offset: options?.offset || 0,
+  const baseParams = {
     filter: options?.filter,
     sort: options?.sort,
-    // 只返回必要的字段，排除完整的 content 字段以节省性能
-    attributesToRetrieve: [
-      'id',
-      'fileId',
-      'fileName',
-      'fileType',
-      'pageRange',
-      'totalPages',
-      'chunkIndex',
-      'totalChunks',
-      'filePath',
-      'createdAt',
-    ],
-    attributesToCrop: ['content'], // 启用内容裁剪和高亮
-    cropLength: 50, // 裁剪长度：匹配位置前后的字符数
-    cropMarker: '...', // 裁剪标记
-    attributesToHighlight: ['content', 'fileName'],
-    highlightPreTag: '<mark>', // 高亮开始标签
-    highlightPostTag: '</mark>', // 高亮结束标签
-    showMatchesPosition: true, // 显示匹配位置
+  };
+
+  // 第一步：轻量查询，仅获取总命中数和 facets
+  const countResult = await index.search<SearchHit>(query, {
+    ...baseParams,
+    limit: 0,
+    offset: 0,
+    facets: ['fileId'],
   });
 
-  console.log('[Search] 搜索结果:', result);
+  const totalHits = countResult.estimatedTotalHits || 0;
+  if (totalHits === 0) {
+    return {
+      hits: [],
+      processingTimeMs: countResult.processingTimeMs,
+      query: countResult.query || query,
+      estimatedTotalHits: 0,
+      facetDistribution: countResult.facetDistribution,
+    };
+  }
+
+  // 第二步：按照批次把所有命中的 chunk 全量取回
+  const allHits: SearchHit[] = [];
+  let offset = 0;
+  let retrieved = 0;
+  let totalProcessingTime = countResult.processingTimeMs || 0;
+  const attributesToRetrieve = [
+    'id',
+    'fileId',
+    'fileName',
+    'fileType',
+    'pageRange',
+    'totalPages',
+    'chunkIndex',
+    'totalChunks',
+    'filePath',
+    'createdAt',
+  ];
+
+  if (options?.includeContent) {
+    attributesToRetrieve.push('content');
+  }
+
+  const shouldFetchAll = options?.fetchAllHits !== false;
+  const requestedLimit = options?.limit ?? batchSize;
+  const requestedOffset = options?.offset ?? 0;
+
+  const fetchBatch = async (limit: number, currentOffset: number) => {
+    const batchResult = await index.search<SearchHit>(query, {
+      ...baseParams,
+      limit,
+      offset: currentOffset,
+      attributesToRetrieve,
+      attributesToCrop: ['content'],
+      cropLength: 50,
+      cropMarker: '...',
+      attributesToHighlight: ['content', 'fileName'],
+      highlightPreTag: '<mark>',
+      highlightPostTag: '</mark>',
+      showMatchesPosition: true,
+    });
+
+    totalProcessingTime += batchResult.processingTimeMs;
+    allHits.push(...batchResult.hits);
+    return batchResult.hits.length;
+  };
+
+  if (!shouldFetchAll) {
+    await fetchBatch(requestedLimit, requestedOffset);
+  } else {
+    while (retrieved < totalHits) {
+    const remaining = totalHits - retrieved;
+    const currentLimit = Math.min(batchSize, remaining);
+
+      const fetched = await fetchBatch(currentLimit, offset);
+      retrieved += fetched;
+      offset += currentLimit;
+
+      if (fetched < currentLimit) {
+        break;
+      }
+    }
+  }
+
+  console.log('[Search] 搜索结果:', {
+    batches: shouldFetchAll ? Math.ceil(totalHits / batchSize) : 1,
+    hits: allHits.length,
+    estimatedTotal: totalHits,
+    facets: countResult.facetDistribution?.fileId
+      ? Object.keys(countResult.facetDistribution.fileId).length
+      : 0,
+  });
+
   return {
-    hits: result.hits,
-    processingTimeMs: result.processingTimeMs,
-    query: result.query || query,
-    estimatedTotalHits: result.estimatedTotalHits || 0,
+    hits: allHits,
+    processingTimeMs: totalProcessingTime,
+    query: countResult.query || query,
+    estimatedTotalHits: totalHits,
+    facetDistribution: countResult.facetDistribution,
   };
 }
 
@@ -118,20 +190,16 @@ export function registerSearchHandlers(): void {
     }
   });
 
-
   // 搜索
-  ipcMain.handle(
-    'search:query',
-    async (_event, query: string, options?: SearchOptions) => {
-      try {
-        const result = await searchDocuments(query, options);
-        return { success: true, data: result };
-      } catch (error: any) {
-        console.error('[Search] 搜索失败:', error);
-        return { success: false, error: error.message };
-      }
-    },
-  );
+  ipcMain.handle('search:query', async (_event, query: string, options?: SearchOptions) => {
+    try {
+      const result = await searchDocuments(query, options);
+      return { success: true, data: result };
+    } catch (error: any) {
+      console.error('[Search] 搜索失败:', error);
+      return { success: false, error: error.message };
+    }
+  });
 
   // 获取统计信息
   ipcMain.handle('search:stats', async () => {
@@ -155,4 +223,3 @@ export function registerSearchHandlers(): void {
     }
   });
 }
-
