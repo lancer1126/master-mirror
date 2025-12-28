@@ -7,7 +7,7 @@
     @drop.prevent="handleGlobalDrop"
   >
     <!-- 顶部导航栏 -->
-    <app-header @upload="showUpload" @archive="goToArchive" @settings="showSettings" />
+    <app-header @action-change="handleHeaderAction" />
 
     <!-- 通知列表 -->
     <notification-list />
@@ -60,29 +60,27 @@ let unsubscribeMeilisearch: (() => void) | null = null;
 // 判断是否在归档页
 const isArchivePage = computed(() => route.path === '/archive');
 
-/**
- * 显示设置弹窗
- */
-const showSettings = () => {
-  settingsVisible.value = true;
-};
-
-/**
- * 显示上传弹窗
- */
-const showUpload = () => {
-  uploadVisible.value = true;
-};
-
-/**
- * 切换归档页面
- * 如果不在归档页则进入归档页，如果已在归档页则跳转至首页
- */
-const goToArchive = () => {
-  if (isArchivePage.value) {
-    router.push('/');
-  } else {
-    router.push('/archive');
+// 路由跳转
+const handleHeaderAction = (action: any) => {
+  switch (action) {
+    case 'home':
+      router.push('/');
+      break;
+    case 'upload':
+      uploadVisible.value = true;
+      break;
+    case 'archive':
+      if (isArchivePage.value) {
+        router.push('/');
+      } else {
+        router.push('/archive');
+      }
+      break;
+    case 'settings':
+      settingsVisible.value = true;
+      break;
+    default:
+      break;
   }
 };
 

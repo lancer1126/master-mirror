@@ -3,9 +3,20 @@
     <div class="header-content">
       <div class="logo"></div>
       <div class="header-actions">
-        <a-button class="action-btn" @click="handleUpload">收录</a-button>
-        <a-button class="action-btn" @click="handleArchive">归档</a-button>
-        <a-button type="text" class="action-btn" @click="handleSettings">
+        <a-button type="text" :class="['action-btn']" @click="() => handleAction('home')">
+          首页
+        </a-button>
+        <a-button type="text" :class="['action-btn']" @click="() => handleAction('upload')">
+          收录
+        </a-button>
+        <a-button type="text" :class="['action-btn']" @click="() => handleAction('archive')">
+          归档
+        </a-button>
+        <a-button
+          type="text"
+          :class="['action-btn', 'icon-btn']"
+          @click="() => handleAction('settings')"
+        >
           <template #icon>
             <setting-outlined />
           </template>
@@ -17,25 +28,20 @@
 
 <script setup lang="ts">
 import { SettingOutlined } from '@ant-design/icons-vue';
+import { ref } from 'vue';
 
 interface AppHeaderEmits {
-  (e: 'upload'): void;
-  (e: 'archive'): void;
-  (e: 'settings'): void;
+  (e: 'action-change', action: HeaderAction): void;
 }
 
+type HeaderAction = 'home' | 'upload' | 'archive' | 'settings';
+
 const emit = defineEmits<AppHeaderEmits>();
+const activeAction = ref<HeaderAction>('home');
 
-const handleUpload = () => {
-  emit('upload');
-};
-
-const handleArchive = () => {
-  emit('archive');
-};
-
-const handleSettings = () => {
-  emit('settings');
+const handleAction = (action: HeaderAction) => {
+  activeAction.value = action;
+  emit('action-change', action);
 };
 </script>
 
@@ -61,17 +67,44 @@ const handleSettings = () => {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-.action-btn {
+:deep(.ant-btn.action-btn) {
+  border: none;
+  background: transparent;
+  color: #111;
   font-size: 14px;
-  color: rgba(0, 0, 0, 0.85);
-  transition: all 0.3s;
+  font-weight: 500;
+  padding: 10px 20px;
+  height: auto;
+  line-height: 1.2;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.action-btn:hover {
-  color: #1890ff;
-  background: rgba(24, 144, 255, 0.06);
+:deep(.ant-btn.action-btn:hover) {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+:deep(.ant-btn.action-btn.active) {
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 10px;
+  backdrop-filter: blur(12px);
+}
+
+:deep(.ant-btn.action-btn:focus-visible) {
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.12);
+}
+
+:deep(.ant-btn.action-btn.icon-btn) {
+  padding: 10px;
+  min-width: 44px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 </style>
