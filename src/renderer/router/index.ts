@@ -22,6 +22,14 @@ const routes = [
         meta: {
           title: '归档',
         },
+      },
+      {
+        path: '/upload',
+        name: '收录',
+        component: () => import('@/views/upload/index.vue'),
+        meta: {
+          title: '收录',
+        },
       }
     ],
   },

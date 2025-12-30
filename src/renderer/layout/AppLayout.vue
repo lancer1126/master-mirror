@@ -23,9 +23,6 @@
     <!-- 设置弹窗 -->
     <settings-modal v-model:open="settingsVisible" />
 
-    <!-- 上传弹窗 -->
-    <upload-modal v-model:open="uploadVisible" />
-
     <!-- 全局拖拽上传遮罩 -->
     <upload-overlay :visible="isGlobalDragging" />
   </div>
@@ -38,7 +35,6 @@ import { useRoute, useRouter } from 'vue-router';
 import InitModal from '@/components/InitModal.vue';
 import NotificationList from '@/components/NotificationList.vue';
 import SettingsModal from '@/components/SettingsModal.vue';
-import UploadModal from '@/components/UploadModal.vue';
 import UploadOverlay from '@/components/UploadOverlay.vue';
 import { useFileUpload } from '@/composables/useFileUpload';
 import { useNotifications } from '@/composables/useNotifications';
@@ -49,7 +45,6 @@ const route = useRoute();
 const { uploadFileObjects } = useFileUpload(); // 使用上传 Hook
 const { error: showError } = useNotifications();
 const settingsVisible = ref(false); // 弹窗状态
-const uploadVisible = ref(false);
 const configInitVisible = ref(false); // 配置初始化弹窗状态
 const isGlobalDragging = ref(false); // 全局拖拽状态
 
@@ -59,6 +54,8 @@ let unsubscribeMeilisearch: (() => void) | null = null;
 
 // 判断是否在归档页
 const isArchivePage = computed(() => route.path === '/archive');
+// 判断是否在收录页
+const isUploadPage = computed(() => route.path === '/upload');
 
 // 路由跳转
 const handleHeaderAction = (action: any) => {
@@ -67,7 +64,11 @@ const handleHeaderAction = (action: any) => {
       router.push('/');
       break;
     case 'upload':
-      uploadVisible.value = true;
+      if (isUploadPage.value) {
+        router.push('/');
+      } else {
+        router.push('/upload');
+      }
       break;
     case 'archive':
       if (isArchivePage.value) {
@@ -86,8 +87,8 @@ const handleHeaderAction = (action: any) => {
 
 // 全局拖拽进入
 const handleGlobalDragEnter = (e: DragEvent) => {
-  // 如果上传弹窗已打开，不处理全局拖拽
-  if (uploadVisible.value) {
+  // 收录页自身已有上传区域，此时不显示全局遮罩
+  if (isUploadPage.value) {
     return;
   }
 
@@ -99,8 +100,7 @@ const handleGlobalDragEnter = (e: DragEvent) => {
 
 // 全局拖拽经过
 const handleGlobalDragOver = (e: DragEvent) => {
-  // 如果上传弹窗已打开，不处理全局拖拽
-  if (uploadVisible.value) {
+  if (isUploadPage.value) {
     return;
   }
 
@@ -111,8 +111,7 @@ const handleGlobalDragOver = (e: DragEvent) => {
 
 // 全局拖拽离开
 const handleGlobalDragLeave = () => {
-  // 如果上传弹窗已打开，不处理全局拖拽
-  if (uploadVisible.value) {
+  if (isUploadPage.value) {
     return;
   }
 
@@ -127,8 +126,7 @@ const handleGlobalDrop = async (e: DragEvent) => {
   dragCounter = 0;
   isGlobalDragging.value = false;
 
-  // 如果上传弹窗已打开，不处理全局拖拽
-  if (uploadVisible.value) {
+  if (isUploadPage.value) {
     return;
   }
 

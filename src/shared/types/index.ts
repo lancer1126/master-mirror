@@ -33,8 +33,6 @@ export type {
   SearchResultItemProps,
   SettingsModalEmits,
   SettingsModalProps,
-  UploadModalEmits,
-  UploadModalProps,
   UploadOptions,
   UploadOverlayProps,
 } from './renderer';

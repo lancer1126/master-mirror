@@ -80,17 +80,6 @@ export interface SearchResultItemEmits {
 }
 
 /**
- * Vue 组件 Props - UploadModal
- */
-export interface UploadModalProps {
-  open: boolean;
-}
-
-export interface UploadModalEmits {
-  (e: 'update:open', value: boolean): void;
-}
-
-/**
  * Vue 组件 Props - UploadOverlay
  */
 export interface UploadOverlayProps {

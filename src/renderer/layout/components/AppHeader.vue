@@ -67,7 +67,7 @@ const handleAction = (action: HeaderAction) => {
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
 :deep(.ant-btn.action-btn) {
