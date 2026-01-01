@@ -1,5 +1,5 @@
 import { APP_INFO, MEILISEARCH_CONFIG } from '@shared/config';
-import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import Store from 'electron-store';
 
 /**
@@ -84,6 +84,12 @@ export function registerConfigHandlers(): void {
       name: APP_INFO.NAME,
       appId: APP_INFO.APP_ID,
     };
+  });
+
+  ipcMain.handle('app:restart', () => {
+    app.relaunch();
+    app.exit(0);
+    return true;
   });
 
   // 选择目录对话框

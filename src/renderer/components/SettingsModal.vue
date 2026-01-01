@@ -4,7 +4,12 @@
       <!-- 文件保存位置设置项 -->
       <div class="setting-item">
         <div class="setting-info">
-          <div class="setting-name">数据保存位置</div>
+          <div class="setting-title-row">
+            <div class="setting-name">数据保存位置</div>
+            <div v-if="isDataPathChanged" class="setting-warning-inline">
+              修改后旧数据将无法识别
+            </div>
+          </div>
           <div class="setting-value">{{ formData.dataPath || '未设置' }}</div>
         </div>
         <a-button type="primary" @click="selectDirectory"> 修改 </a-button>
@@ -22,7 +27,7 @@
           :max="65535"
           :step="1"
           style="width: 100px"
-          @blur="saveMeilisearchPort"
+          @blur="normalizeMeilisearchPort"
         />
       </div>
 
@@ -35,11 +40,18 @@
         <a-button type="primary" @click="selectMeilisearchFile"> 修改 </a-button>
       </div>
     </div>
+    <div v-if="hasPendingChanges" class="settings-restart-alert">
+      <div class="settings-restart-text">需要重启软件来应用修改</div>
+      <a-button type="primary" danger :loading="isRestarting" @click="applyChangesAndRestart">
+        立即重启
+      </a-button>
+    </div>
   </a-modal>
 </template>
 
 <script setup lang="ts">
 import type { SettingsModalEmits, SettingsModalProps } from '@shared/types';
+import { message } from 'ant-design-vue';
 
 const props = defineProps<SettingsModalProps>();
 const emit = defineEmits<SettingsModalEmits>();
@@ -49,13 +61,35 @@ const visible = computed({
   set: (value) => emit('update:open', value),
 });
 
-const formData = reactive({
+interface SettingsFormState {
+  dataPath: string;
+  meilisearchPath: string;
+  meilisearchPort: number;
+}
+
+const formData = reactive<SettingsFormState>({
   dataPath: '',
   meilisearchPath: '',
   meilisearchPort: 7700,
 });
 
-const defaultPath = ref('');
+const initialSettings = ref<SettingsFormState>({
+  dataPath: '',
+  meilisearchPath: '',
+  meilisearchPort: 7700,
+});
+
+const isRestarting = ref(false);
+
+const hasPendingChanges = computed(() => {
+  return (
+    formData.dataPath !== initialSettings.value.dataPath ||
+    formData.meilisearchPath !== initialSettings.value.meilisearchPath ||
+    formData.meilisearchPort !== initialSettings.value.meilisearchPort
+  );
+});
+
+const isDataPathChanged = computed(() => formData.dataPath !== initialSettings.value.dataPath);
 
 // 加载设置
 const loadSettings = async () => {
@@ -64,7 +98,11 @@ const loadSettings = async () => {
     formData.dataPath = settings.dataPath || '';
     formData.meilisearchPath = settings.meilisearchPath || '';
     formData.meilisearchPort = settings.meilisearchPort || 7700;
-    defaultPath.value = settings.dataPath || '';
+    initialSettings.value = {
+      dataPath: formData.dataPath,
+      meilisearchPath: formData.meilisearchPath,
+      meilisearchPort: formData.meilisearchPort,
+    };
   } catch (error) {
     console.error('加载设置失败:', error);
   }
@@ -75,8 +113,6 @@ const selectDirectory = async () => {
   try {
     const path = await window.api.dialog.selectDirectory();
     if (path) {
-      // 立即保存设置
-      await window.api.settings.set('dataPath', path);
       formData.dataPath = path;
     }
   } catch (error) {
@@ -89,7 +125,6 @@ const selectMeilisearchFile = async () => {
   try {
     const path = await window.api.dialog.selectExeFile();
     if (path) {
-      await window.api.settings.set('meilisearchPath', path);
       formData.meilisearchPath = path;
     }
   } catch (error) {
@@ -97,15 +132,55 @@ const selectMeilisearchFile = async () => {
   }
 };
 
-// 保存 Meilisearch 端口
-const saveMeilisearchPort = async () => {
-  const port = formData.meilisearchPort;
-  if (port && port >= 1024 && port <= 65535) {
-    try {
-      await window.api.settings.set('meilisearchPort', port);
-    } catch (error) {
-      console.error('保存端口失败:', error);
-    }
+// Meilisearch 端口合法性校验
+const normalizeMeilisearchPort = () => {
+  const port = Number(formData.meilisearchPort);
+  if (!port || port < 1024 || port > 65535) {
+    message.warning('端口号需在 1024-65535 之间');
+    const clamped = Math.min(
+      Math.max(port || initialSettings.value.meilisearchPort || 7700, 1024),
+      65535,
+    );
+    formData.meilisearchPort = clamped;
+  }
+};
+
+const validateSettings = () => {
+  if (!formData.dataPath) {
+    message.warning('请先设置数据保存位置');
+    return false;
+  }
+  if (!formData.meilisearchPath) {
+    message.warning('请先设置 Meilisearch 可执行文件路径');
+    return false;
+  }
+  const port = Number(formData.meilisearchPort);
+  if (!port || port < 1024 || port > 65535) {
+    message.warning('Meilisearch 端口号需在 1024-65535 之间');
+    return false;
+  }
+  return true;
+};
+
+const applyChangesAndRestart = async () => {
+  if (!hasPendingChanges.value || isRestarting.value) {
+    return;
+  }
+  if (!validateSettings()) {
+    return;
+  }
+  try {
+    isRestarting.value = true;
+    await Promise.all([
+      window.api.settings.set('dataPath', formData.dataPath),
+      window.api.settings.set('meilisearchPath', formData.meilisearchPath),
+      window.api.settings.set('meilisearchPort', formData.meilisearchPort),
+    ]);
+    await window.api.app.restart();
+  } catch (error) {
+    console.error('应用重启失败:', error);
+    message.error('重启失败，请稍后重试');
+    isRestarting.value = false;
   }
 };
 
@@ -171,6 +246,20 @@ watch(
   min-width: 0;
 }
 
+.setting-title-row {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.setting-warning-inline {
+  font-size: 13px;
+  color: #f12809;
+  white-space: nowrap;
+}
+
 .setting-name {
   font-size: 14px;
   font-weight: 600;
@@ -227,5 +316,22 @@ watch(
 .expand-leave-from {
   opacity: 1;
   max-height: 200px;
+}
+
+.settings-restart-alert {
+  padding: 12px 24px;
+  background: #fffbe6;
+  border: 1px solid #ffe58f;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.settings-restart-text {
+  font-size: 14px;
+  color: #ad6800;
+  flex: 1;
 }
 </style>

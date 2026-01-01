@@ -29,6 +29,7 @@ interface API {
   close: () => void;
   app: {
     getInfo: () => Promise<{ name: string; appId: string }>;
+    restart: () => Promise<void>;
   };
   settings: {
     get: (key: string) => Promise<any>;

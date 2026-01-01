@@ -12,6 +12,7 @@ const api = {
   // 应用信息 API
   app: {
     getInfo: () => ipcRenderer.invoke('app:getInfo'),
+    restart: () => ipcRenderer.invoke('app:restart'),
   },
   // 设置相关 API
   settings: {
