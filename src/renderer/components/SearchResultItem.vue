@@ -171,6 +171,7 @@ const handleShowFolder = () => {
   display: flex;
   align-items: center;
   gap: 4px;
+  min-height: 16px;
 }
 
 .file-path:hover {

@@ -81,7 +81,7 @@ export function useFileUpload() {
 
     try {
       if (showLoading) {
-        message.loading({ content: '正在上传文件...', key: 'upload', duration: 0 });
+        message.loading({ content: '正在构建索引...', key: 'upload', duration: 0 });
       }
 
       const result = await window.api.upload.files(filePaths);

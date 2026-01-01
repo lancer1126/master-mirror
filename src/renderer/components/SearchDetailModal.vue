@@ -4,48 +4,54 @@
     :title="modalTitle"
     :width="700"
     :footer="null"
-    class="search-detail-modal"
     @cancel="handleCancel"
   >
     <div class="detail-content">
-      <!-- 文件信息 -->
-      <div v-if="file" class="file-info-header">
-        <div class="file-title-row">
-          <div class="file-stats">
+      <div class="detail-scroll">
+        <!-- 文件信息 -->
+        <div v-if="file" class="file-info-header">
+          <div class="file-title-row">
             <a-tag color="blue">{{ file.matchCount }} 处匹配</a-tag>
+            <a-tag color="success">{{ file.fileType.toUpperCase() }}</a-tag>
+          </div>
+          <div class="file-path-row" @click="handleShowInFolder">
+            <folder-open-outlined class="path-icon" />
+            <span class="path-text">{{ file.filePath }}</span>
           </div>
         </div>
-        <div class="file-path-row" @click="handleShowInFolder">
-          <folder-open-outlined class="path-icon" />
-          <span class="path-text">{{ file.filePath }}</span>
+
+        <!-- 加载状态 -->
+        <div v-if="loading" class="loading-container">
+          <a-spin tip="正在加载详细匹配内容..." />
         </div>
-      </div>
 
-      <a-divider style="margin: 16px 0" />
-
-      <!-- 加载状态 -->
-      <div v-if="loading" class="loading-container">
-        <a-spin tip="正在加载详细匹配内容..." />
-      </div>
-
-      <!-- 匹配列表 -->
-      <div v-else-if="file && file.matches && file.matches.length > 0" class="matches-container">
-        <div v-for="(match, index) in file.matches" :key="match.id" class="match-item">
-          <div class="match-header">
-            <span class="match-number">{{ index + 1 }}</span>
-            <span v-if="match.pageRange" class="page-info">页数：{{ match.pageRange }}</span>
+        <!-- 匹配列表 -->
+        <div v-else-if="file && file.matches && file.matches.length > 0" class="matches-container">
+          <div v-for="(match, index) in file.matches" :key="match.id" class="match-item">
+            <div class="match-header">
+              <span class="match-number">
+                {{ index + 1 }}
+              </span>
+              <span v-if="match.pageRange" class="page-info">页数范围：{{ match.pageRange }}</span>
+            </div>
+            <div class="match-content" v-html="getFormattedContent(match)"></div>
           </div>
-          <div class="match-content" v-html="getFormattedContent(match)"></div>
         </div>
-        <div v-if="hasMoreChunks" class="load-more">
-          <a-button type="link" :loading="loadingMore" @click="loadMoreMatches">
-            加载更多匹配
-          </a-button>
-        </div>
+
+        <!-- 空状态 -->
+        <a-empty v-else description="暂无匹配内容" />
       </div>
 
-      <!-- 空状态 -->
-      <a-empty v-else description="暂无匹配内容" />
+      <div v-if="!loading && file && totalChunkHits > CHUNK_PAGE_SIZE" class="pagination-container">
+        <a-pagination
+          size="small"
+          :current="currentPage"
+          :page-size="CHUNK_PAGE_SIZE"
+          :show-size-changer="false"
+          :total="totalChunkHits"
+          @change="handlePageChange"
+        />
+      </div>
     </div>
   </a-modal>
 </template>
@@ -68,9 +74,8 @@ const props = defineProps<SearchDetailModalProps>();
 const emit = defineEmits<SearchDetailModalEmits>();
 
 const loading = ref(false);
-const loadingMore = ref(false);
-const chunkOffset = ref(0);
 const totalChunkHits = ref(0);
+const currentPage = ref(1);
 
 const visible = computed({
   get: () => props.open,
@@ -82,12 +87,10 @@ const modalTitle = computed(() => {
 });
 
 const searchKeyword = computed(() => props.searchQuery.trim());
-const hasMoreChunks = computed(() => chunkOffset.value < totalChunkHits.value);
 
 const resetState = () => {
-  chunkOffset.value = 0;
   totalChunkHits.value = 0;
-  loadingMore.value = false;
+  currentPage.value = 1;
   if (props.file) {
     props.file.matches = [];
     props.file.detailsLoaded = false;
@@ -98,9 +101,7 @@ watch(
   () => props.open,
   (newVal) => {
     if (newVal && props.file) {
-      if (!props.file.detailsLoaded) {
-        loadNextChunkPage(true);
-      }
+      loadPage(1, true);
     } else {
       resetState();
     }
@@ -114,7 +115,7 @@ watch(
     if (newFile !== oldFile) {
       resetState();
       if (props.open && newFile) {
-        loadNextChunkPage(true);
+        loadPage(1, true);
       }
     }
   },
@@ -225,46 +226,33 @@ const expandMatches = (hits: SearchHit[], keyword: string): DetailMatch[] => {
   return expanded;
 };
 
-const loadNextChunkPage = async (reset = false) => {
+const loadPage = async (page = 1, resetMatches = false) => {
   if (!props.file) {
     return;
   }
 
-  if (reset) {
-    resetState();
+  if (resetMatches && props.file) {
+    props.file.matches = [];
   }
 
-  const isInitialLoad = chunkOffset.value === 0;
-  if (isInitialLoad) {
-    loading.value = true;
-  } else {
-    loadingMore.value = true;
-  }
+  loading.value = true;
 
   try {
     const exactQuery = `"${props.searchQuery}"`;
-    console.log(`加载文件详情: ${props.file.fileName}, fileId: ${props.file.fileId}`);
-
     const result = await window.api.search.query(exactQuery, {
       filter: `fileId = "${props.file.fileId}"`,
       limit: CHUNK_PAGE_SIZE,
-      offset: chunkOffset.value,
+      offset: (page - 1) * CHUNK_PAGE_SIZE,
       includeContent: true,
       fetchAllHits: false,
     });
-    console.log('result', result);
 
     if (result.success && result.data) {
       totalChunkHits.value = result.data.estimatedTotalHits || 0;
-      chunkOffset.value += result.data.hits.length;
+      currentPage.value = page;
       const expandedMatches = expandMatches(result.data.hits, searchKeyword.value);
-      props.file.matches = [...(props.file.matches || []), ...expandedMatches];
-      if (chunkOffset.value >= totalChunkHits.value) {
-        props.file.detailsLoaded = true;
-      }
-      console.log(
-        `加载成功: 本次 ${expandedMatches.length} 个匹配，已加载 chunk ${chunkOffset.value}/${totalChunkHits.value}`,
-      );
+      props.file.matches = expandedMatches;
+      props.file.detailsLoaded = true;
     } else {
       message.error(result.error || '加载详情失败');
     }
@@ -273,15 +261,12 @@ const loadNextChunkPage = async (reset = false) => {
     message.error('加载详情失败');
   } finally {
     loading.value = false;
-    loadingMore.value = false;
   }
 };
 
-const loadMoreMatches = async () => {
-  if (loadingMore.value || !hasMoreChunks.value) {
-    return;
-  }
-  await loadNextChunkPage();
+const handlePageChange = (page: number) => {
+  if (page === currentPage.value) return;
+  loadPage(page, true);
 };
 
 const getFormattedContent = (match: DetailMatch): string => {
@@ -316,7 +301,16 @@ const handleCancel = () => {
 <style scoped>
 .detail-content {
   max-height: 600px;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-scroll {
+  flex: 1;
   overflow-y: auto;
+  padding-right: 12px;
+  margin-right: -12px;
+  box-sizing: border-box;
 }
 
 /* 加载状态 */
@@ -332,6 +326,7 @@ const handleCancel = () => {
   background: #fafafa;
   padding: 16px;
   border-radius: 8px;
+  margin-bottom: 12px;
 }
 
 .file-title-row {
@@ -339,24 +334,6 @@ const handleCancel = () => {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 6px;
-}
-
-.file-title {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: rgba(0, 0, 0, 0.85);
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-right: 16px;
-}
-
-.file-stats {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
 }
 
 .file-path-row {
@@ -392,16 +369,20 @@ const handleCancel = () => {
 .matches-container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
-.load-more {
+.pagination-container {
+  flex-shrink: 0;
   display: flex;
   justify-content: center;
+  padding: 10px 0 0;
+  margin-bottom: -8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #fff 40%);
 }
 
 .match-item {
-  padding: 16px;
+  padding: 12px;
   background: #fff;
   border: 1px solid #f0f0f0;
   border-radius: 8px;
@@ -425,8 +406,8 @@ const handleCancel = () => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   background: linear-gradient(135deg, #97ccd5 0%, #aeddc3 100%);
   color: #fff;
   border-radius: 50%;
@@ -435,27 +416,21 @@ const handleCancel = () => {
 }
 
 .page-info {
-  font-size: 13px;
+  font-size: 12px;
   color: #1890ff;
   background: #e6f7ff;
-  padding: 4px 12px;
+  padding: 4px 8px;
   border-radius: 4px;
   font-weight: 500;
-}
-
-.chunk-info {
-  font-size: 12px;
-  color: rgba(0, 0, 0, 0.45);
 }
 
 .match-content {
   font-size: 14px;
   color: rgba(0, 0, 0, 0.65);
   line-height: 1.8;
-  padding: 12px;
+  padding: 10px;
   background: #fafafa;
   border-radius: 6px;
-  margin-bottom: 8px;
   word-break: break-word;
 }
 
@@ -466,11 +441,6 @@ const handleCancel = () => {
   padding: 2px 6px;
   border-radius: 3px;
   font-weight: 600;
-}
-
-.match-footer {
-  display: flex;
-  justify-content: flex-end;
 }
 
 /* 滚动条样式 */

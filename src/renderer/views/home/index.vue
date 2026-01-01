@@ -421,8 +421,7 @@ const clearSearch = () => {
 
 /* 搜索信息 - 固定在顶部 */
 .results-header {
-  padding: 12px 0;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 10px 0;
   background: #f5f5f5;
   flex-shrink: 0; /* 不收缩 */
 }
@@ -436,7 +435,7 @@ const clearSearch = () => {
 .results-content {
   flex: 1;
   overflow-y: auto;
-  padding: 8px 0;
+  padding: 2px 0;
 }
 
 .results-list {

@@ -79,6 +79,8 @@ export interface SearchOptions {
   includeContent?: boolean;
   /** 是否需要一次性取回所有命中（默认 true） */
   fetchAllHits?: boolean;
+  /** 裁剪长度 */
+  cropLength?: number;
 }
 
 /**

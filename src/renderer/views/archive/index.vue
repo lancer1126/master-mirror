@@ -60,7 +60,7 @@
                   定位
                 </a-button>
                 <a-popconfirm
-                  title="确定要删除这条记录吗？"
+                  title="确定要移除这条记录吗？"
                   ok-text="确定"
                   cancel-text="取消"
                   @confirm="handleDelete(record.fileId)"
@@ -69,7 +69,7 @@
                     <template #icon>
                       <delete-outlined />
                     </template>
-                    删除
+                    移除
                   </a-button>
                 </a-popconfirm>
               </a-space>

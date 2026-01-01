@@ -5,6 +5,7 @@ import { ipcMain } from 'electron';
 import { getMeilisearchClient } from './meilisearch';
 
 const DEFAULT_BATCH_SIZE = 500;
+const DEFAULT_CROP_LENGTH = 50;
 
 /**
  * 初始化索引（设置可搜索字段和排序规则）
@@ -42,6 +43,7 @@ async function searchDocuments(query: string, options?: SearchOptions): Promise<
   const client = getMeilisearchClient();
   const index = client.index(MEILISEARCH_CONFIG.DEFAULT_INDEX);
   const batchSize = options?.batchSize || DEFAULT_BATCH_SIZE;
+  const cropLength = options?.cropLength || DEFAULT_CROP_LENGTH;
 
   const baseParams = {
     filter: options?.filter,
@@ -100,7 +102,7 @@ async function searchDocuments(query: string, options?: SearchOptions): Promise<
       offset: currentOffset,
       attributesToRetrieve,
       attributesToCrop: ['content'],
-      cropLength: 50,
+      cropLength: cropLength,
       cropMarker: '...',
       attributesToHighlight: ['content', 'fileName'],
       highlightPreTag: '<mark>',
@@ -129,15 +131,6 @@ async function searchDocuments(query: string, options?: SearchOptions): Promise<
       }
     }
   }
-
-  console.log('[Search] 搜索结果:', {
-    batches: shouldFetchAll ? Math.ceil(totalHits / batchSize) : 1,
-    hits: allHits.length,
-    estimatedTotal: totalHits,
-    facets: countResult.facetDistribution?.fileId
-      ? Object.keys(countResult.facetDistribution.fileId).length
-      : 0,
-  });
 
   return {
     hits: allHits,

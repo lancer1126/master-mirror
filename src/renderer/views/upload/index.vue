@@ -135,7 +135,7 @@ const handleUpload = async () => {
 
 const handleClear = () => {
   if (uploading.value) {
-    message.warning('正在上传中，请稍候...');
+    message.warning('正在构建索引，请稍候...');
     return;
   }
 
