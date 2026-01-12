@@ -5,7 +5,7 @@
         <h2 class="upload-title">文件收录</h2>
         <p class="upload-desc">支持拖拽或点击选择 PDF 文件，系统会自动解析并构建索引。</p>
       </div>
-      <div class="header-actions">
+      <div class="header-actions" v-if="pendingFilesCount > 0">
         <a-button @click="handleClear" :disabled="!canClear">
           {{ uploading ? '上传中...' : '清空' }}
         </a-button>
@@ -15,7 +15,7 @@
           :disabled="pendingFilesCount === 0 || uploading"
           @click="handleUpload"
         >
-          {{ pendingFilesCount > 0 ? `确认上传 (${pendingFilesCount})` : '请选择文件' }}
+          {{ `确认上传 (${pendingFilesCount})` }}
         </a-button>
       </div>
     </section>
@@ -30,6 +30,7 @@
         :show-upload-list="true"
         accept=".pdf"
         @drop="handleDrop"
+        @remove="handleRemove"
       >
         <p class="ant-upload-drag-icon">
           <inbox-outlined />
@@ -39,7 +40,7 @@
 
       <div v-if="progressEntries.length > 0" class="progress-section">
         <a-divider>上传进度</a-divider>
-        <div v-for="[fileName, progress] in progressEntries" :key="fileName" class="progress-item">
+        <div v-for="[fileName, progress] in progressEntries" :key="fileName">
           <div class="progress-info">
             <span class="file-name">{{ fileName }}</span>
             <span class="progress-status">{{ getStatusText(progress.status) }}</span>
@@ -112,6 +113,10 @@ const getProgressStatus = (status: string): 'success' | 'exception' | 'normal' |
   if (status === 'completed') return 'success';
   if (status === 'failed') return 'exception';
   return 'active';
+};
+
+const handleRemove = (file: UploadFile) => {
+  pendingFiles.value = pendingFiles.value.filter((f) => f.name !== file.name);
 };
 
 const handleUpload = async () => {
@@ -205,19 +210,14 @@ const handleClear = () => {
 .progress-section {
   background: #fff;
   border-radius: 8px;
-  padding: 16px 24px;
+  padding: 12px 16px;
   border: 1px solid #f0f0f0;
-}
-
-.progress-item {
-  margin-bottom: 10px;
 }
 
 .progress-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
 }
 
 .file-name {
