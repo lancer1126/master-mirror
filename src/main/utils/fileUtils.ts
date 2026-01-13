@@ -3,6 +3,8 @@
  */
 
 import { createHash } from 'crypto';
+import { readdirSync, statSync } from 'fs';
+import { extname, join } from 'path';
 
 /**
  * 生成文件哈希值（用于生成唯一且符合Meilisearch规范的ID）
@@ -31,3 +33,28 @@ export function generateChunkId(filePath: string, chunkIndex: number): string {
   return `${fileHash}_chunk_${chunkIndex}`;
 }
 
+/**
+ * 递归扫描目录下的所有 PDF 文件
+ * @param dirPath 目录路径
+ * @returns PDF 文件路径数组
+ */
+export function scanPdfFiles(dirPath: string): string[] {
+  let results: string[] = [];
+  try {
+    const list = readdirSync(dirPath);
+    list.forEach((file) => {
+      const filePath = join(dirPath, file);
+      const stat = statSync(filePath);
+      if (stat && stat.isDirectory()) {
+        results = results.concat(scanPdfFiles(filePath));
+      } else {
+        if (extname(file).toLowerCase() === '.pdf') {
+          results.push(filePath);
+        }
+      }
+    });
+  } catch (error) {
+    console.warn(`扫描目录失败: ${dirPath}`, error);
+  }
+  return results;
+}

@@ -39,6 +39,7 @@ const api = {
   // 文件上传 API
   upload: {
     files: (filePaths: string[]) => ipcRenderer.invoke('file:upload', filePaths),
+    scanDir: (dirPath: string) => ipcRenderer.invoke('file:scanDir', dirPath),
     getSupportedTypes: () => ipcRenderer.invoke('file:getSupportedTypes'),
     delete: (fileId: string) => ipcRenderer.invoke('file:delete', fileId),
   },

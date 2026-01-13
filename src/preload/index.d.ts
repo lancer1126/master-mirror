@@ -47,6 +47,7 @@ interface API {
   };
   upload: {
     files: (filePaths: string[]) => Promise<UploadResult>;
+    scanDir: (dirPath: string) => Promise<{ success: boolean; data?: string[]; error?: string }>;
     getSupportedTypes: () => Promise<{ success: boolean; data?: string[]; error?: string }>;
     delete: (fileId: string) => Promise<{ success: boolean; error?: string }>;
   };

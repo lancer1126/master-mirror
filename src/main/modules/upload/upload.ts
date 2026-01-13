@@ -7,7 +7,7 @@ import { dbService } from '@main/modules/database/dbService';
 import { deleteDocumentsByFileId, getMeilisearchClient } from '@main/modules/search/meilisearch';
 import type { ParsedChunk, ParseProgress } from '@main/parsers';
 import { parserFactory } from '@main/parsers';
-import { generateFileHash } from '@main/utils';
+import { generateFileHash, scanPdfFiles } from '@main/utils';
 import { MEILISEARCH_CONFIG, PARSER_CONFIG } from '@shared/config';
 import { BrowserWindow, ipcMain } from 'electron';
 import type { MeiliSearch } from 'meilisearch';
@@ -309,6 +309,23 @@ export function registerUploadHandlers(): void {
       };
     } catch (error: any) {
       console.error('[Upload] 获取支持的文件类型失败:', error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  });
+
+  // 扫描目录下的 PDF 文件
+  ipcMain.handle('file:scanDir', async (_, dirPath: string) => {
+    try {
+      const files = scanPdfFiles(dirPath);
+      return {
+        success: true,
+        data: files,
+      };
+    } catch (error: any) {
+      console.error('[Upload] 扫描目录失败:', error);
       return {
         success: false,
         error: error.message,
